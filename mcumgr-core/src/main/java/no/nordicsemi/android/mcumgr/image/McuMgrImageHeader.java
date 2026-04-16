@@ -23,9 +23,6 @@ import no.nordicsemi.android.mcumgr.util.Endian;
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class McuMgrImageHeader {
 
-    private static final int IMG_HEADER_MAGIC      = 0x96f3b83d;
-    private static final int IMG_HEADER_MAGIC_V1   = 0x96f3b83c;
-
     private static final int HEADER_LENGTH = 24;
     private final int mMagic;
     private final int mLoadAddr;
@@ -62,8 +59,10 @@ public class McuMgrImageHeader {
 
         int magic = ByteUtil.byteArrayToUnsignedInt(b, offset, Endian.LITTLE, 4);
 
-        if (magic != IMG_HEADER_MAGIC && magic != IMG_HEADER_MAGIC_V1) {
-            throw new McuMgrException(String.format("Wrong magic number (found 0x%08X, expected 0x%08X or 0x%08X)", magic, IMG_HEADER_MAGIC, IMG_HEADER_MAGIC_V1));
+        int expectedMagic   = McuMgrImageConfig.getHeaderMagic();
+        int expectedMagicV1 = McuMgrImageConfig.getHeaderMagicV1();
+        if (magic != expectedMagic && magic != expectedMagicV1) {
+            throw new McuMgrException(String.format("Wrong magic number (found 0x%08X, expected 0x%08X or 0x%08X)", magic, expectedMagic, expectedMagicV1));
         }
 
         int loadAddr = ByteUtil.byteArrayToUnsignedInt(b, 4 + offset, Endian.LITTLE, 4);
@@ -105,6 +104,6 @@ public class McuMgrImageHeader {
     }
 
     public boolean isLegacy() {
-        return mMagic == IMG_HEADER_MAGIC_V1;
+        return mMagic == McuMgrImageConfig.getHeaderMagicV1();
     }
 }
