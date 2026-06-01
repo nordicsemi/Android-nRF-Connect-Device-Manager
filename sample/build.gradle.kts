@@ -5,7 +5,9 @@
  */
 
 plugins {
-    alias(libs.plugins.nordic.application)
+    alias(libs.plugins.nordic.android.application)
+    alias(libs.plugins.nordic.kotlin)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -43,8 +45,8 @@ dependencies {
     implementation(libs.dagger)
     implementation(libs.dagger.android)
     implementation(libs.dagger.android.support)
-    annotationProcessor(libs.dagger.compiler)
-    annotationProcessor(libs.dagger.android.processor)
+    ksp(libs.dagger.compiler)
+    ksp(libs.dagger.android.processor)
 
     // Brings the new BluetoothLeScanner API to older platforms
     implementation(nordic.compat.scanner)
