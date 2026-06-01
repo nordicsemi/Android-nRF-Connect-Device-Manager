@@ -30,15 +30,15 @@
  */
 
 plugins {
-    alias(libs.plugins.nordic.library)
-    alias(libs.plugins.nordic.kotlin.android)
-    alias(libs.plugins.nordic.nexus.android)
+    alias(libs.plugins.nordic.android.library)
+    alias(libs.plugins.nordic.kotlin)
+    alias(libs.plugins.nordic.publish.android)
     alias(libs.plugins.ksp)
 }
 
 group = "no.nordicsemi.android"
 
-nordicNexusPublishing {
+nordicPublishing {
     POM_ARTIFACT_ID = "observability"
     POM_NAME = "Android Device Management Observability Library"
 

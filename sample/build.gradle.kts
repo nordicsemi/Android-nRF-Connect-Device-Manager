@@ -7,8 +7,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  */
 
 plugins {
-    alias(libs.plugins.nordic.application)
-    alias(libs.plugins.nordic.kotlin.android)
+    alias(libs.plugins.nordic.android.application)
+    alias(libs.plugins.nordic.kotlin)
     alias(libs.plugins.ksp)
 }
 

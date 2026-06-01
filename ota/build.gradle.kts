@@ -30,14 +30,14 @@
  */
 
 plugins {
-    alias(libs.plugins.nordic.library)
-    alias(libs.plugins.nordic.kotlin.android)
-    alias(libs.plugins.nordic.nexus.android)
+    alias(libs.plugins.nordic.android.library)
+    alias(libs.plugins.nordic.kotlin)
+    alias(libs.plugins.nordic.publish.android)
 }
 
 group = "no.nordicsemi.android"
 
-nordicNexusPublishing {
+nordicPublishing {
     POM_ARTIFACT_ID = "ota"
     POM_NAME = "Android Device Management OTA Library"
 
