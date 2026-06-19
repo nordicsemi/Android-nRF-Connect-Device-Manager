@@ -10,11 +10,11 @@ plugins {
     alias(libs.plugins.ksp) apply false
 
     // This applies Nordic look & feel to generated Dokka documentation.
-    // https://github.com/NordicSemiconductor/Android-Gradle-Plugins/blob/main/plugins/src/main/kotlin/NordicDokkaPlugin.kt
+    // https://github.com/nordicsemi/Nordic-Gradle-Plugins/blob/main/plugins/src/main/kotlin/NordicDokkaPlugin.kt
     alias(libs.plugins.nordic.dokka) apply true
 
     // Nordic Gradle Plugins
-    // https://github.com/NordicSemiconductor/Android-Gradle-Plugins
+    // https://github.com/nordicsemi/Nordic-Gradle-Plugins
     alias(libs.plugins.nordic.android.application) apply false
     alias(libs.plugins.nordic.android.library) apply false
     alias(libs.plugins.nordic.feature.hilt) apply false
@@ -25,6 +25,6 @@ plugins {
 // Configure main Dokka page
 dokka {
     pluginsConfiguration.html {
-        homepageLink.set("https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager")
+        homepageLink.set("https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager")
     }
 }

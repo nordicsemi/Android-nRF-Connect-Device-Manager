@@ -19,12 +19,11 @@ group = "no.nordicsemi.android"
 nordicPublishing {
     POM_ARTIFACT_ID = "mcumgr-core"
     POM_NAME = "Mcu Manager Core"
-
     POM_DESCRIPTION = "A mobile management library for devices running nRF Connect SDK, Zephyr or Apache Mynewt (DFU, file system, logs, stats, config, etc.)."
-    POM_URL = "https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
-    POM_SCM_URL = "https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
-    POM_SCM_CONNECTION = "scm:git@github.com:NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
-    POM_SCM_DEV_CONNECTION = "scm:git@github.com:NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
+    POM_URL = "https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/"
+    POM_SCM_URL = "https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/"
+    POM_SCM_CONNECTION = "scm:git@github.com:nordicsemi/Android-nRF-Connect-Device-Manager.git"
+    POM_SCM_DEV_CONNECTION = "scm:git@github.com:nordicsemi/Android-nRF-Connect-Device-Manager.git"
 }
 
 android {
@@ -59,7 +58,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     // Import CBOR parser - version 2.14+ requires Android 8
-    // See: https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager/issues/135
+    // See: https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/issues/135
     //noinspection NewerVersionAvailable
     implementation(libs.fasterxml.cbor)
     //noinspection NewerVersionAvailable

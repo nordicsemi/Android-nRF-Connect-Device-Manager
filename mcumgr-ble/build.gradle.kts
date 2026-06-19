@@ -19,12 +19,11 @@ group = "no.nordicsemi.android"
 nordicPublishing {
     POM_ARTIFACT_ID = "mcumgr-ble"
     POM_NAME = "Mcu Manager BLE Transport"
-
     POM_DESCRIPTION = "A Bluetooth LE transport implementation for the Mcu Manager library."
-    POM_URL = "https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
-    POM_SCM_URL = "https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
-    POM_SCM_CONNECTION = "scm:git@github.com:NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
-    POM_SCM_DEV_CONNECTION = "scm:git@github.com:NordicSemiconductor/Android-nRF-Connect-Device-Manager.git"
+    POM_URL = "https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/"
+    POM_SCM_URL = "https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/"
+    POM_SCM_CONNECTION = "scm:git@github.com:nordicsemi/Android-nRF-Connect-Device-Manager.git"
+    POM_SCM_DEV_CONNECTION = "scm:git@github.com:nordicsemi/Android-nRF-Connect-Device-Manager.git"
 }
 
 android {

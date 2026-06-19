@@ -106,7 +106,7 @@ class Reset extends FirmwareUpgradeTask {
 				// A McuMgrDisconnectedException may be returned if the device has disconnected
 				// before the response was received. In this case, assume that the reset
 				// was successful and the device is now disconnected.
-				// See: https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager/issues/242
+				// See: https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/issues/242
 			}
 		});
 	}

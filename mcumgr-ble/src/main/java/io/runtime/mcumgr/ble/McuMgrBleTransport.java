@@ -706,7 +706,7 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
                     // Note: When Samsung A8 Tab requests higher MTU it only requests RX MTU to be > 23,
                     //       leaving TX equal to 23 bytes. However, later it tries to send longer
                     //       packets, causing the target device to disconnect.
-                    //       See: https://github.com/NordicSemiconductor/Android-DFU-Library/pull/408
+                    //       See: https://github.com/nordicsemi/Android-DFU-Library/pull/408
                     //       For that device set the max packet length unless the SMP reassembly is
                     //       supported (see MCU Params request below). Some features, like
                     //       DFU require sending longer packets.
