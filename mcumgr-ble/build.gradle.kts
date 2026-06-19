@@ -63,3 +63,9 @@ dependencies {
     // Test
     testImplementation(libs.kotlin.test)
 }
+
+dokka {
+    dokkaSourceSets.configureEach {
+        includes.from("Module.md")
+    }
+}
