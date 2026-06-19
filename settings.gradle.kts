@@ -45,6 +45,7 @@ pluginManagement {
                 includeGroupAndSubgroups("com.gradle")
                 includeGroupAndSubgroups("no.nordicsemi")
                 includeGroupAndSubgroups("org.jetbrains")
+                includeGroupAndSubgroups("org.spdx")
             }
         }
         mavenCentral()
@@ -67,20 +68,18 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         // Use Nordic Gradle Version Catalog with common external libraries versions.
-        // Link: https://github.com/NordicSemiconductor/Android-Gradle-Plugins
+        // Link: https://github.com/nordicsemi/Nordic-Gradle-Plugins
         create("libs") {
-            // Note: Freeze at 2.11, 2.12+ increased minSdk to 23:
-            // https://github.com/NordicSemiconductor/Android-Gradle-Plugins/releases/tag/2.12-2
-            from("no.nordicsemi.gradle:version-catalog-min-sdk-21:3.0")
+            from("no.nordicsemi.gradle:version-catalog-min-sdk-21:3.1.2")
         }
         // Fixed versions for Nordic libraries.
         create("nordic") {
             from(files("gradle/nordic.versions.toml"))
         }
         // Nordic Version Catalog is released after library releases, so cannot be used internally in libs.
-        // Link: https://github.com/NordicSemiconductor/Android-Version-Catalog
+        // Link: https://github.com/nordicsemi/Nordic-Version-Catalog
         // create("nordic") {
-        //    from("no.nordicsemi.android:version-catalog:2025.10.00")
+        //    from("no.nordicsemi.gradle:nordic-version-catalog:2025.06.00")
         // }
     }
 }
