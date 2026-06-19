@@ -70,6 +70,7 @@ dependencies {
     // Timber & SLF4J
     implementation(libs.slf4j.timber)
     implementation(nordic.log.timber)
+    implementation(nordic.kotlin.log.timber)
 
     // GSON
     implementation(libs.gson)

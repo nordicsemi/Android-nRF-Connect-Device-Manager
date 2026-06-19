@@ -12,6 +12,8 @@ import no.nordicsemi.kotlin.ble.client.android.CentralManager
 import no.nordicsemi.kotlin.ble.client.android.native
 import no.nordicsemi.kotlin.ble.core.android.AndroidEnvironment
 import no.nordicsemi.kotlin.ble.environment.android.NativeAndroidEnvironment
+import no.nordicsemi.kotlin.log.Log
+import no.nordicsemi.kotlin.log.timber.Timber
 
 @Module
 class CentralManagerModule {
@@ -32,6 +34,7 @@ class CentralManagerModule {
     @McuMgrScope
     fun providesCentralManager(environment: NativeAndroidEnvironment, scope: CoroutineScope): CentralManager {
         return CentralManager.native(environment, scope)
+            .also { it.logger = Log.Sink.Timber() }
     }
 }
 

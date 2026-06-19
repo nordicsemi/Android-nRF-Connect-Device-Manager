@@ -3,9 +3,16 @@ ble = "2.11.0"
 blek = "2.0.0-beta01"
 log = "2.5.0"
 scanner = "1.6.0"
+util = "1.2.0"
 
 [libraries]
 ble = { group = "no.nordicsemi.android", name = "ble", version.ref = "ble" }
 blek-client-android = { group = "no.nordicsemi.kotlin.ble", name = "client-android", version.ref = "blek" }
-log-timber = { group = "no.nordicsemi.android", name = "log-timber", version.ref = "log" }
 compat-scanner = { group = "no.nordicsemi.android.support.v18", name = "scanner", version.ref = "scanner" }
+
+# Kotlin logging facade
+kotlin-log = { group = "no.nordicsemi.kotlin", name = "log", version.ref = "util" }
+kotlin-log-timber = { group = "no.nordicsemi.kotlin", name = "log-timber", version.ref = "util" }
+
+# Timber -> nRF Logger integration
+log-timber = { group = "no.nordicsemi.android", name = "log-timber", version.ref = "log" }
