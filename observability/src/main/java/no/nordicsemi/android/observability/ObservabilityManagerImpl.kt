@@ -82,7 +82,7 @@ internal class ObservabilityManagerImpl(
                     var connection: Job? = null
                     // Collect the state of the device and update the state flow.
                     state
-                        .drop(1)
+                        .drop(1) // Skip initial Disconnected state.
                         .onEach { state ->
                             _state.value = _state.value.copy(state = state)
 
