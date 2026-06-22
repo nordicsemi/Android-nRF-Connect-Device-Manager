@@ -40,7 +40,7 @@ public class IntroActivity extends AppCompatActivity {
                 open(Uri.parse("https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/samples/subsys/mgmt/mcumgr/smp_svr/README.html"))
         );
         binding.introLinkSourceCode.setOnClickListener(v ->
-                open(Uri.parse("https://github.com/NordicSemiconductor/Android-nRF-Connect-Device-Manager"))
+                open(Uri.parse("https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager"))
         );
 
         try {

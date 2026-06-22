@@ -7,6 +7,7 @@
 package io.runtime.mcumgr.image.tlv;
 
 import io.runtime.mcumgr.exception.McuMgrException;
+import io.runtime.mcumgr.image.McuMgrImageConfig;
 import io.runtime.mcumgr.util.ByteUtil;
 import io.runtime.mcumgr.util.Endian;
 
@@ -39,8 +40,8 @@ public class McuMgrImageTlvInfo {
         info.mMagic = (short) ByteUtil.byteArrayToUnsignedInt(b, offset, Endian.LITTLE, 2);
         info.mTotal = (short) ByteUtil.byteArrayToUnsignedInt(b, offset + 2, Endian.LITTLE, 2);
 
-        if (info.mMagic != McuMgrImageTlv.IMG_TLV_INFO_MAGIC &&
-                info.mMagic != McuMgrImageTlv.IMG_TLV_PROTECTED_INFO_MAGIC) {
+        if (info.mMagic != McuMgrImageConfig.getTlvInfoMagic() &&
+                info.mMagic != McuMgrImageConfig.getTlvProtectedInfoMagic()) {
             throw new McuMgrException("Wrong magic number, magic=" + info.mMagic);
         }
         return info;
@@ -59,6 +60,6 @@ public class McuMgrImageTlvInfo {
     }
 
     public boolean isProtected() {
-        return mMagic == McuMgrImageTlv.IMG_TLV_PROTECTED_INFO_MAGIC;
+        return mMagic == McuMgrImageConfig.getTlvProtectedInfoMagic();
     }
 }
