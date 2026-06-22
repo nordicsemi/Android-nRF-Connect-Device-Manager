@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package no.nordicsemi.android.mcumgr.image;
+package io.runtime.mcumgr.image;
 
-import no.nordicsemi.android.mcumgr.image.tlv.McuMgrImageTlv;
+import io.runtime.mcumgr.image.tlv.McuMgrImageTlv;
 
 /**
  * Global configuration for the magic numbers used when parsing McuBoot firmware image headers
