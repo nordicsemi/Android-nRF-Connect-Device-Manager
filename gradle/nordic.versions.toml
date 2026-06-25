@@ -1,6 +1,6 @@
 [versions]
 ble = "2.11.0"
-blek = "2.0.0-beta01"
+blek = "2.0.0-beta02"
 log = "2.5.0"
 scanner = "1.6.0"
 util = "1.2.0"
