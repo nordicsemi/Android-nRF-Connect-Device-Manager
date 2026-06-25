@@ -70,7 +70,7 @@ dependencyResolutionManagement {
         // Use Nordic Gradle Version Catalog with common external libraries versions.
         // Link: https://github.com/nordicsemi/Nordic-Gradle-Plugins
         create("libs") {
-            from("no.nordicsemi.gradle:version-catalog-min-sdk-21:3.1.2")
+            from("no.nordicsemi.gradle:version-catalog-min-sdk-21:3.1.2-1")
         }
         // Fixed versions for Nordic libraries.
         create("nordic") {
