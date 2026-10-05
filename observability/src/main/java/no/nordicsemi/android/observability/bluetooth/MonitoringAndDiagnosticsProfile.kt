@@ -59,7 +59,7 @@ import no.nordicsemi.android.observability.log.Category
 import no.nordicsemi.kotlin.ble.client.Profile
 import no.nordicsemi.kotlin.ble.client.RemoteCharacteristic
 import no.nordicsemi.kotlin.ble.client.RemoteService
-import no.nordicsemi.kotlin.ble.client.android.Peripheral
+import no.nordicsemi.kotlin.ble.client.Peripheral
 import no.nordicsemi.kotlin.ble.core.WriteType
 import no.nordicsemi.kotlin.log.Log
 import kotlin.coroutines.cancellation.CancellationException
@@ -108,11 +108,6 @@ open class MonitoringAndDiagnosticsProfile : Profile.Simple(
     private lateinit var authorisationCharacteristic: RemoteCharacteristic
     private lateinit var dataExportCharacteristic: RemoteCharacteristic
 
-    /**
-     * The peripheral owning the attached service, used as a fallback source for [logger].
-     */
-    private var peripheral: Peripheral? = null
-
     private var scope: CoroutineScope? = null
 
     private val _state =
@@ -133,37 +128,36 @@ open class MonitoringAndDiagnosticsProfile : Profile.Simple(
         scope?.cancel()
     }
 
-    override fun prepare(service: RemoteService) {
-        peripheral = service.owner as? Peripheral
+    override fun prepare(peripheral: Peripheral<*, *>, service: RemoteService) {
         deviceIdCharacteristic = service.deviceIdCharacteristic
         dataUriCharacteristic = service.dataUriCharacteristic
         authorisationCharacteristic = service.authorisationCharacteristic
         dataExportCharacteristic = service.dataExportCharacteristic
     }
 
-    override suspend fun CoroutineScope.initialize() {
+    override suspend fun CoroutineScope.initialize(peripheral: Peripheral<*, *>) {
         scope = this
         _state.value = ChunksEmitter.State.Initializing
 
         try {
-            logger?.v { "Reading Monitoring & Diagnostics Service configuration..." }
+            logger?.v(peripheral) { "Reading Monitoring & Diagnostics Service configuration..." }
             // Read and emit device configuration.
             val deviceId = deviceIdCharacteristic.read().let { String(it) }
-            logger?.i { "Serial number: $deviceId" }
+            logger?.i(peripheral) { "Serial number: $deviceId" }
             val url = dataUriCharacteristic.read().let { String(it) }
-            logger?.i { "Data URL: $url" }
+            logger?.i(peripheral) { "Data URL: $url" }
             val authorisationToken = authorisationCharacteristic.read().let { AuthorisationHeader.parse(it) }
             // Note: If debug logging is enabled in the Peripheral, the key may be logged as bytes
             //       on DEBUG level. However, this is a public, write-only key. No big deal.
-            logger?.i { "Project Key: ${authorisationToken.shortened()}" }
+            logger?.i(peripheral) { "Project Key: ${authorisationToken.shortened()}" }
 
             // Start listening to data collected by the device.
-            logger?.v { "Enabling Data export notifications..." }
+            logger?.v(peripheral) { "Enabling Data export notifications..." }
             val deferred = CompletableDeferred<Unit>()
             dataExportCharacteristic
                 // Subscribe and enable notifications (on collection).
                 .subscribe {
-                    logger?.i { "Data export notifications enabled" }
+                    logger?.i(peripheral) { "Data export notifications enabled" }
                     deferred.complete(Unit)
                 }
                 // This will catch an exception thrown when subscribe fails,
@@ -180,18 +174,18 @@ open class MonitoringAndDiagnosticsProfile : Profile.Simple(
             _state.value = ChunksEmitter.State.Ready(ChunksConfig(authorisationToken, url, deviceId))
 
             // Enable notifications for the data export characteristic.
-            logger?.v { "Enabling steaming..." }
+            logger?.v(peripheral) { "Enabling steaming..." }
             val enableStreamingCommand = byteArrayOf(0x01)
             dataExportCharacteristic.write(enableStreamingCommand, WriteType.WITH_RESPONSE)
 
-            logger?.i { "Monitoring & Diagnostics Service started successfully" }
+            logger?.i(peripheral) { "Monitoring & Diagnostics Service started successfully" }
 
             // Await scope cancellation to reset the state to Disconnected.
             awaitCancellation()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger?.w { "Monitoring & Diagnostics Service failed to start" }
+            logger?.w(peripheral) { "Monitoring & Diagnostics Service failed to start" }
             cancel(CancellationException(e))
         } finally {
             // If the Project Key was invalid, the MDS profile will be closed.
@@ -199,8 +193,8 @@ open class MonitoringAndDiagnosticsProfile : Profile.Simple(
             // the Data Export characteristic is disabled.
             withContext(NonCancellable) {
                 try {
-                    if (peripheral?.isConnected == true) {
-                        logger?.v { "Disabling Data export notifications..." }
+                    if (peripheral.isConnected) {
+                        logger?.v(peripheral) { "Disabling Data export notifications..." }
                         dataExportCharacteristic.setNotifying(false)
                     }
                 } catch (e: CancellationException) {
@@ -208,28 +202,22 @@ open class MonitoringAndDiagnosticsProfile : Profile.Simple(
                 } catch (_: Exception) {
                     // Ignore
                 }
-                logger?.i { "Monitoring & Diagnostics Service stopped" }
+                logger?.i(peripheral) { "Monitoring & Diagnostics Service stopped" }
                 _state.value = ChunksEmitter.State.Disconnected
             }
         }
     }
 
-    private fun Log.Sink<Category>.v(t: Throwable? = null, message: () -> String) {
-        peripheral?.identifier?.let { id ->
-            log(Category.MDS, Log.Level.TRACE, id, t, message)
-        }
+    private fun Log.Sink<Category>.v(peripheral: Peripheral<*, *>, t: Throwable? = null, message: () -> String) {
+        log(Category.MDS, Log.Level.TRACE, peripheral.identifier.toString(), t, message)
     }
 
-    private fun Log.Sink<Category>.i(t: Throwable? = null, message: () -> String) {
-        peripheral?.identifier?.let { id ->
-            log(Category.MDS, Log.Level.INFO, id, t, message)
-        }
+    private fun Log.Sink<Category>.i(peripheral: Peripheral<*, *>, t: Throwable? = null, message: () -> String) {
+        log(Category.MDS, Log.Level.INFO, peripheral.identifier.toString(), t, message)
     }
 
-    private fun Log.Sink<Category>.w(t: Throwable? = null, message: () -> String) {
-        peripheral?.identifier?.let { id ->
-            log(Category.MDS, Log.Level.WARN, id, t, message)
-        }
+    private fun Log.Sink<Category>.w(peripheral: Peripheral<*, *>, t: Throwable? = null, message: () -> String) {
+        log(Category.MDS, Log.Level.WARN, peripheral.identifier.toString(), t, message)
     }
 
     @Suppress("unused")
