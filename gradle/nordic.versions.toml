@@ -7,6 +7,7 @@ util = "1.2.0"
 
 [libraries]
 ble = { group = "no.nordicsemi.android", name = "ble", version.ref = "ble" }
+blek-client-core-android = { group = "no.nordicsemi.kotlin.ble", name = "client-core-android", version.ref = "blek" }
 blek-client-android = { group = "no.nordicsemi.kotlin.ble", name = "client-android", version.ref = "blek" }
 compat-scanner = { group = "no.nordicsemi.android.support.v18", name = "scanner", version.ref = "scanner" }
 
