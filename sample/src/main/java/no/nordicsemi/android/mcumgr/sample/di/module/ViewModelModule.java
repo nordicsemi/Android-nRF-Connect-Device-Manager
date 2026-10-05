@@ -15,9 +15,7 @@ import dagger.Provides;
 import no.nordicsemi.android.mcumgr.sample.di.component.ViewModelSubComponent;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.ViewModelFactory;
 
-@Module(subcomponents = {
-        ViewModelSubComponent.class
-})
+@Module(subcomponents = ViewModelSubComponent.class)
 public class ViewModelModule {
 
     @Provides
