@@ -50,7 +50,17 @@ public class SettingsManager extends McuManager {
         WRITE_NOT_SUPPORTED(6),
 
         /** The provided key name does not support being deleted. */
-        DELETE_NOT_SUPPORTED(7);
+        DELETE_NOT_SUPPORTED(7),
+
+        /** The provided key name does not support being saved. */
+        SAVE_NOT_SUPPORTED(8),
+
+        /**
+         * The provided key cannot be saved before the value is longer than the size of the
+         * largest value that can safely be read
+         * (CONFIG_SETTINGS_SAVE_SINGLE_SUBTREE_WITHOUT_MODIFICATION_VALUE_SIZE).
+         */
+        SAVE_FAILED_VALUE_TOO_LONG_TO_READ(9);
 
         private final int mCode;
 
