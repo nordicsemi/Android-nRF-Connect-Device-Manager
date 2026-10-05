@@ -125,7 +125,7 @@ public abstract class McuManager {
      * @param logger the sink to receive the log entries, or null.
      * @since 4.0
      */
-    public void setLogger(@Nullable Log.Sink<Category> logger) {
+    public void setLogger(@Nullable Log.Sink<? super Category> logger) {
         LOG.setSink(logger);
     }
 

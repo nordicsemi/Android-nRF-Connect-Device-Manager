@@ -321,7 +321,7 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
      * @param logger the sink to receive the log entries, or null.
      * @since 4.0
      */
-    public void setLogger(@Nullable Sink<Category> logger) {
+    public void setLogger(@Nullable Sink<? super Category> logger) {
         LOG.setSink(logger);
     }
 
