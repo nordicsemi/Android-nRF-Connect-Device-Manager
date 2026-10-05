@@ -81,6 +81,8 @@
 		<item>Root key not found (5)</item>
 		<item>Write not supported (6)</item>
 		<item>Delete not supported (7)</item>
+		<item>Save not supported (8)</item>
+		<item>Save failed: Value too long to read (9)</item>
 	</string-array>
 
 	<string-array name="mcu_mgr_stats_error">
