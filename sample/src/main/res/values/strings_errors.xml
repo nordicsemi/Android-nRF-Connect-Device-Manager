@@ -31,6 +31,7 @@
 		<item>RTC not set (4)</item>
 		<item>RTC command failed (5)</item>
 		<item>Query response value not valid (6)</item>
+		<item>Heap stats fetch failed (7)</item>
 	</string-array>
 
 	<string-array name="mcu_mgr_img_error">
@@ -109,6 +110,7 @@
 		<item>Mount point not found (14)</item>
 		<item>Read-only file system (15)</item>
 		<item>File empty (16)</item>
+		<item>Closing file failed (17)</item>
 	</string-array>
 
 	<string-array name="mcu_mgr_shell_error">

@@ -60,7 +60,10 @@ public class DefaultManager extends McuManager {
         RTC_COMMAND_FAILED(5),
 
         /** Query was recognized but there is no valid value for the response. */
-        QUERY_RESPONSE_VALUE_NOT_VALID(6);
+        QUERY_RESPONSE_VALUE_NOT_VALID(6),
+
+        /** Heap statistic fetch failed. */
+        HEAP_STATS_FETCH_FAILED(7);
 
         private final int mCode;
 

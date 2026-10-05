@@ -101,7 +101,10 @@ public class FsManager extends TransferManager {
         READ_ONLY_FILESYSTEM(15),
 
         /** The operation cannot be performed because the file is empty with no contents. */
-        FILE_EMPTY(16);
+        FILE_EMPTY(16),
+
+        /** Error occurred whilst attempting to close a file. */
+        FILE_CLOSE_FAILED(17);
 
         private final int mCode;
 
