@@ -105,12 +105,12 @@ public class SUITUpgradeManager implements FirmwareUpgradeController {
      * <p>
      * The entries are reported under {@link Category#DFU}, except for those emitted by
      * the managers used internally to talk to the device, which report under
-     * {@link Category#SUIT}. Set to null (the default) to stop logging.
+     * {@link Category#DFU}. Set to null (the default) to stop logging.
      *
      * @param logger the sink to receive the log entries, or null.
      * @since 4.0
      */
-    public void setLogger(@Nullable final Log.Sink<Category> logger) {
+    public void setLogger(@Nullable final Log.Sink<? super Category> logger) {
         LOG.setSink(logger);
     }
 

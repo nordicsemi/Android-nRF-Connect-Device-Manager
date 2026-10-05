@@ -253,7 +253,7 @@ public class FirmwareUpgradeManager implements FirmwareUpgradeController {
      * @param logger the sink to receive the log entries, or null.
      * @since 4.0
      */
-    public void setLogger(@Nullable final Log.Sink<Category> logger) {
+    public void setLogger(@Nullable final Log.Sink<? super Category> logger) {
         LOG.setSink(logger);
     }
 
