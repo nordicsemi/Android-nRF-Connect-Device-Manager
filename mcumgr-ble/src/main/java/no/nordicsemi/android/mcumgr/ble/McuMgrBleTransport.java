@@ -250,7 +250,7 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
      * from the {@link McuMgrHeader}, included in the first segment.
      * <p>
      * This method sets the maximum packet length supported by the target device.
-     * By default, this is be set to MTU - 3, which means that each BLE packet will contain the full
+     * By default, this is set to *ATT MTU - 3*, which means that each BLE packet will contain the full
      * SMP packet (header + CBOR-encoded data). For devices supporting reading McuMgr parameters
      * (nRF Connect SDK 2.0+) this value is automatically obtained after connection using
      * {@link DefaultManager#params()}.
@@ -756,7 +756,7 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
      * @since 1.1
      */
     protected boolean isAdditionalServiceSupported(@NonNull BluetoothGatt gatt) {
-        // By default no extra services are supported.
+        // By default, no extra services are supported.
         return true;
     }
 
@@ -892,7 +892,7 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
                 )
                 // The response should be received immediately.
                 .timeout(1000 /* ms */)
-                .merge(new SmpMerger())
+                .merge(mSMPMerger)
                 .with((device, data) -> {
                     final byte[] bytes = data.getValue();
                     // If the response is 14 bytes or shorter, that means the McuMgr Params
