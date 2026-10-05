@@ -147,7 +147,7 @@ public class DeviceStatusFragment extends Fragment implements Injectable {
                 if (slot >= 0 && slot < slots.length) {
                     binding.activeB0Slot.setText(slots[slot]);
                 } else {
-                    binding.bootloaderMode.setText(getString(R.string.status_unknown_value, slot));
+                    binding.activeB0Slot.setText(getString(R.string.status_unknown_value, slot));
                 }
             } else {
                 binding.activeB0Slot.setText(R.string.status_unknown);
