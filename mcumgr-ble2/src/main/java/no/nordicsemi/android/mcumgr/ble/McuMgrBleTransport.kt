@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import no.nordicsemi.android.mcumgr.McuMgrCallback
+import no.nordicsemi.android.mcumgr.McuMgrHeader
 import no.nordicsemi.android.mcumgr.McuMgrScheme
 import no.nordicsemi.android.mcumgr.McuMgrTransport
 import no.nordicsemi.android.mcumgr.ble.exception.McuMgrBluetoothDisabledException
@@ -230,6 +231,7 @@ class McuMgrBleTransport @JvmOverloads constructor(
         responseType: Class<T>,
         callback: McuMgrCallback<T>,
     ) {
+        require(payload.size >= McuMgrHeader.HEADER_LENGTH) { "Packet must contain at least 8-byte SMP header, but has ${payload.size} bytes" }
         // If the device is not connected, connect. When it is already connected, this returns
         // the established connection and awaiting it below completes immediately.
         val connection = ensureConnected()

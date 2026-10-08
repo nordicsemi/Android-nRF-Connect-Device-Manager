@@ -27,6 +27,7 @@ import no.nordicsemi.android.mcumgr.log.McuMgrLogger
 import no.nordicsemi.android.mcumgr.managers.DefaultManager
 import no.nordicsemi.android.mcumgr.response.McuMgrResponse
 import no.nordicsemi.android.mcumgr.response.dflt.McuMgrParamsResponse
+import no.nordicsemi.android.mcumgr.util.CBOR
 import no.nordicsemi.kotlin.ble.client.Peripheral
 import no.nordicsemi.kotlin.ble.client.Profile
 import no.nordicsemi.kotlin.ble.client.RemoteCharacteristic
@@ -228,7 +229,7 @@ internal class SmpProfile @JvmOverloads constructor(
                                 bytes,
                                 McuMgrParamsResponse::class.java
                             )
-                            transportLog?.info { "SMP reassembly supported with buffer size: ${response.bufSize} bytes and count: ${response.bufCount}" }
+                            transportLog?.info { "SMP reassembly supported with buffer size: ${response.bufSize} bytes, and count: ${response.bufCount}" }
                             response.bufSize
                         } catch (e: Exception) {
                             transportLog?.warn { "Failed to parse Mcu Manager parameters response: ${e.message}" }
@@ -368,6 +369,16 @@ internal class SmpProfile @JvmOverloads constructor(
             )
             return@suspendCancellableCoroutine
         }
+
+        transportLog?.info {
+            val headerAsString = McuMgrHeader.fromBytes(payload)
+            try {
+                "Sending (${payload.size} bytes) $headerAsString CBOR ${CBOR.toString(payload, McuMgrHeader.HEADER_LENGTH)}"
+            } catch (e: Exception) {
+                "Sending (${payload.size} bytes) $headerAsString CBOR invalid"
+            }
+        }
+
         service.session.send(payload, timeout, object : SmpTransaction {
             override suspend fun send(data: ByteArray) {
                 try {
@@ -386,7 +397,18 @@ internal class SmpProfile @JvmOverloads constructor(
                 }
             }
 
-            override fun onResponse(data: ByteArray) = continuation.resume(data)
+            override fun onResponse(data: ByteArray) {
+                transportLog?.info {
+                    val headerAsString = McuMgrHeader.fromBytes(data)
+                    try {
+                        "Received (${data.size} bytes) $headerAsString CBOR ${CBOR.toString(data, McuMgrHeader.HEADER_LENGTH)}"
+                    } catch (e: Exception) {
+                        "Received (${data.size} bytes) $headerAsString CBOR invalid"
+                    }
+                }
+
+                continuation.resume(data)
+            }
 
             override fun onFailure(e: Throwable) = continuation.resumeWithException(e)
         })
