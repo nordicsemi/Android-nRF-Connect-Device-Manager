@@ -77,10 +77,13 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     public static class ThroughputData {
         public int progress;
         public float averageThroughput;
+        /** True if this is the first point of a new upload (a next image, or a resumed upload). */
+        public boolean newSeries;
 
-        public ThroughputData(final int progress, final float averageThroughput) {
+        public ThroughputData(final int progress, final float averageThroughput, final boolean newSeries) {
             this.progress = progress;
             this.averageThroughput = averageThroughput;
+            this.newSeries = newSeries;
         }
     }
 
@@ -107,8 +110,12 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
 
     private long uploadStartTimestamp;
 	private int imageSize, bytesSent, bytesSentSinceUploadStated, lastProgress;
+    private long lastProgressTimestamp;
+    private boolean newSeriesPending;
     /** A value indicating that the upload has not been started before. */
     private final static int NOT_STARTED = -1;
+    /** If no upload progress was reported for this long, the upload is considered restarted (e.g. after a reset). */
+    private final static long RESTART_TIMEOUT = 3000L; /* ms */
 	/** How often the throughput data should be sent to the graph. */
 	private final static long REFRESH_RATE = 100L; /* ms */
 
@@ -143,23 +150,22 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                     case UPLOAD -> {
                         Timber.i("Uploading firmware...");
                         bytesSentSinceUploadStated = NOT_STARTED;
-                        stateLiveData.postValue(State.UPLOADING);
+                        postState(State.UPLOADING, manager.isPaused());
                     }
                     case TEST -> {
                         handler.removeCallbacks(graphUpdater);
-                        stateLiveData.postValue(State.TESTING);
+                        postState(State.TESTING, manager.isPaused());
                     }
                     case CONFIRM -> {
                         handler.removeCallbacks(graphUpdater);
-                        stateLiveData.postValue(State.CONFIRMING);
+                        postState(State.CONFIRMING, manager.isPaused());
                     }
-                    case RESET -> stateLiveData.postValue(State.RESETTING);
+                    case RESET -> postState(State.RESETTING, manager.isPaused());
                 }
             }
 
             @Override
             public void onUploadProgressChanged(final int bytesSent, final int imageSize, final long timestamp) {
-                setLoggingEnabled(bytesSent == imageSize);
                 ImageUpgradeViewModel.this.onUploadProgressChanged(bytesSent, imageSize, timestamp);
             }
 
@@ -193,17 +199,17 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 switch (newState) {
                     case PROCESSING -> {
                         handler.removeCallbacks(graphUpdater);
-                        stateLiveData.postValue(State.PROCESSING);
+                        postState(State.PROCESSING, suitManager.isPaused());
                     }
                     case UPLOADING_ENVELOPE -> {
                         Timber.i("Uploading envelope...");
                         bytesSentSinceUploadStated = NOT_STARTED;
-                        stateLiveData.postValue(State.UPLOADING);
+                        postState(State.UPLOADING, suitManager.isPaused());
                     }
                     case UPLOADING_RESOURCE -> {
                         Timber.i("Uploading resource...");
                         bytesSentSinceUploadStated = NOT_STARTED;
-                        stateLiveData.postValue(State.UPLOADING);
+                        postState(State.UPLOADING, suitManager.isPaused());
                     }
                 }
             }
@@ -505,19 +511,47 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     public void pause() {
         if (manager.isInProgress() || suitManager.isInProgress()) {
             handler.removeCallbacks(graphUpdater);
-            stateLiveData.postValue(State.PAUSED);
             manager.pause();
             suitManager.pause();
+            stateLiveData.postValue(State.PAUSED);
             Timber.i("Upload paused");
             setLoggingEnabled(true);
             setReady();
         }
     }
 
+    /**
+     * Posts the given state, or {@link State#PAUSED} if the upgrade is paused. The next task
+     * is announced even if the upgrade got paused before it was started, and it must not
+     * hide the Resume button.
+     */
+    private void postState(final State state, final boolean paused) {
+        stateLiveData.postValue(paused ? State.PAUSED : state);
+    }
+
+    /** Returns the state matching the task the paused upgrade is going to continue with. */
+    private State currentState() {
+        if (suitManager.isPaused()) {
+            return switch (suitManager.getState()) {
+                case PROCESSING -> State.PROCESSING;
+                default -> State.UPLOADING;
+            };
+        }
+        return switch (manager.getState()) {
+            case VALIDATE -> State.VALIDATING;
+            case TEST -> State.TESTING;
+            case CONFIRM -> State.CONFIRMING;
+            case RESET -> State.RESETTING;
+            default -> State.UPLOADING;
+        };
+    }
+
     public void resume() {
         if (manager.isPaused() || suitManager.isPaused()) {
             setBusy();
-            stateLiveData.postValue(State.UPLOADING);
+            // The upgrade may have been paused after the upload finished, when the next task has
+            // been already announced but not started, so go back to the state it is actually in.
+            stateLiveData.postValue(currentState());
             Timber.i("Upload resumed");
             bytesSentSinceUploadStated = NOT_STARTED;
             setLoggingEnabled(false);
@@ -552,7 +586,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 final float timeSinceUploadStarted = timestamp - uploadStartTimestamp;
                 final float averageThroughput = bytesSentSinceUploadStarted / timeSinceUploadStarted; // bytes / ms = KB/s
 
-                progressLiveData.postValue(new ThroughputData(progress, averageThroughput));
+                progressLiveData.postValue(new ThroughputData(progress, averageThroughput, newSeriesPending));
+                newSeriesPending = false;
             }
 
             if (stateLiveData.getValue() == State.UPLOADING) {
@@ -568,10 +603,20 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     }
 
     private void onUploadProgressChanged(final int bytesSent, final int imageSize, final long timestamp) {
+        final int previousBytesSent = ImageUpgradeViewModel.this.bytesSent;
         ImageUpgradeViewModel.this.imageSize = imageSize;
         ImageUpgradeViewModel.this.bytesSent = bytesSent;
 
         final long uptimeMillis = SystemClock.uptimeMillis();
+
+        // The upload may have been restarted without any state change, e.g. after the device was
+        // reset and the upload resumed from the offset reported by the device. In that case the
+        // throughput must be measured from scratch.
+        if (bytesSentSinceUploadStated != NOT_STARTED
+                && (bytesSent < previousBytesSent || uptimeMillis - lastProgressTimestamp > RESTART_TIMEOUT)) {
+            bytesSentSinceUploadStated = NOT_STARTED;
+        }
+        lastProgressTimestamp = uptimeMillis;
 
         // Check if this is the first time this method is called since:
         // - the start of an upload
@@ -579,8 +624,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
         if (bytesSentSinceUploadStated == NOT_STARTED) {
             lastProgress = NOT_STARTED;
 
-            // If a new image started being sending, clear the progress graph.
-            progressLiveData.postValue(null);
+            // Start a new series on the graph. The previous ones are kept, dimmed.
+            newSeriesPending = true;
 
             // To calculate the throughput it is necessary to store the initial timestamp and
             // the number of bytes sent so far. Mind, that the upload may be resumed from any point,

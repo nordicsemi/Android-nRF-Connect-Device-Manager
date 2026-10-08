@@ -4,16 +4,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import no.nordicsemi.android.mcumgr.McuMgrTransport
 import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport
-import no.nordicsemi.kotlin.ble.core.ATT_MTU_DEFAULT
 import no.nordicsemi.kotlin.ble.core.ConnectionParameters
 import no.nordicsemi.kotlin.ble.core.Phy
 import no.nordicsemi.kotlin.ble.core.PhyInUse
-import no.nordicsemi.kotlin.ble.core.WriteType
 
 /**
  * Everything the throughput graph shows about the link: the connection parameters, the packet
@@ -29,7 +26,7 @@ import no.nordicsemi.kotlin.ble.core.WriteType
  */
 class ThroughputParameters(
     val parameters: ConnectionParameters,
-    private val phy: PhyInUse,
+    private val phy: PhyInUse?,
     val mtu: Int,
     val bufferSize: Int,
 ) {
@@ -53,13 +50,13 @@ class ThroughputParameters(
     val timeoutInMs: Long?
         get() = timeout?.times(10L)
 
-    /** The TX PHY in use, as a Bluetooth specification value. */
-    val txPhy: Phy
-        get() = phy.txPhy
+    /** The TX PHY in use, or null if unknown (e.g. disconnected). */
+    val txPhy: Phy?
+        get() = phy?.txPhy
 
-    /** The RX PHY in use, as a Bluetooth specification value. */
-    val rxPhy: Phy
-        get() = phy.rxPhy
+    /** The RX PHY in use, or null if unknown (e.g. disconnected). */
+    val rxPhy: Phy?
+        get() = phy?.rxPhy
 
     companion object {
         /**
@@ -67,19 +64,20 @@ class ThroughputParameters(
          *
          * @param transport The transport in use.
          * @param scope The coroutine scope the observers run in.
-         * @return The parameters of the link, or null if the transport is not a Bluetooth LE one
+         * @return A live data with the parameters of the link, which holds null while they are not
+         * available (e.g. the device is disconnected), or null if the transport is not a Bluetooth LE one
          * and therefore has no link to report on.
          */
         @JvmStatic
         fun observe(
             transport: McuMgrTransport,
             scope: CoroutineScope,
-        ): LiveData<ThroughputParameters>? {
+        ): LiveData<ThroughputParameters?>? {
             if (transport !is McuMgrBleTransport) {
                 return null
             }
             val peripheral = transport.peripheral
-            val liveData = MutableLiveData<ThroughputParameters>()
+            val liveData = MutableLiveData<ThroughputParameters?>()
             combine(
                 peripheral.connectionParameters,
                 peripheral.phy,
@@ -92,12 +90,9 @@ class ThroughputParameters(
                     ?: return@combine null
                 val mtu = peripheral.mtu.value ?: return@combine null
                 val bufferSize = transport.maxPacketLength ?: (mtu - 3)
-                ThroughputParameters(connectionParameters, phy ?: PhyInUse.PHY_LE_1M, mtu, bufferSize)
+                ThroughputParameters(connectionParameters, phy, mtu, bufferSize)
             }
-                .filterNotNull()
-                .onEach {
-                    parameters -> liveData.postValue(parameters)
-                }
+                .onEach { parameters -> liveData.postValue(parameters) }
                 .launchIn(scope)
             return liveData
         }

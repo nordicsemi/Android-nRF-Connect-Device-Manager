@@ -218,7 +218,8 @@ public class ImageUpgradeFragment extends FileBrowserFragment implements Injecta
                 binding.graph.setVisibility(View.VISIBLE);
                 binding.graph.addProgress(
                         throughputData.progress,
-                        throughputData.averageThroughput
+                        throughputData.averageThroughput,
+                        throughputData.newSeries
                 );
             }
         });

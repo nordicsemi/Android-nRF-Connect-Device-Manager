@@ -15,7 +15,8 @@ import androidx.core.content.ContextCompat;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 import no.nordicsemi.android.mcumgr.sample.R;
 import no.nordicsemi.kotlin.ble.core.Phy;
@@ -27,22 +28,32 @@ public class ThroughputGraph extends View {
 	private final Paint parametersPaint;
 	private final Paint averageThroughputPaint;
 	private final Paint averageThroughputFillPaint;
+	private final Paint previousThroughputPaint;
 	private final Paint horizontalLinesPaint;
 	private float tenKbPerSHeight;
 	/** View dimension. */
 	private int width, height;
 	private boolean showMetadata;
 
-	private final float[] averageThroughputData = new float[101];
-	private final float[] connectionIntervalData = new float[101];
-	private final int[] progressData = new int[101];
+	/** A single upload attempt. A new series is started when the progress goes back, e.g. after resuming. */
+	private static final class Series {
+		final float[] averageThroughputData = new float[MAX_POINTS];
+		final float[] connectionIntervalData = new float[MAX_POINTS];
+		final int[] progressData = new int[MAX_POINTS];
+		final float[] points = new float[4 * MAX_POINTS];
+		final Path path = new Path();
+		int count;
+	}
+
+	private static final int MAX_POINTS = 101;
+	/** Number of older series kept, in addition to the current one. */
+	private static final int MAX_OLD_SERIES = 4;
+
+	private final List<Series> series = new ArrayList<>();
 
 	private float currentMaxThroughput, maxThroughput, currentConnectionInterval;
 	private int mtu, bufferSize;
-	private Phy txPhy, rxPhy;
-	private int currentIndex;
-	private final Path throughputPath = new Path();
-	private final float[] averageThroughputPoints = new float[4 * 101];
+	@Nullable private Phy txPhy, rxPhy;
 
 	private final float averageThroughputTextWidth;
 
@@ -79,6 +90,12 @@ public class ThroughputGraph extends View {
 		averageThroughputFillPaint.setStyle(Paint.Style.FILL);
 		averageThroughputFillPaint.setColor(ContextCompat.getColor(context, R.color.colorInstantaneousThroughput));
 
+		previousThroughputPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+		previousThroughputPaint.setStrokeWidth(3);
+		previousThroughputPaint.setStrokeJoin(Paint.Join.ROUND);
+		previousThroughputPaint.setColor(averageThroughputPaint.getColor());
+		previousThroughputPaint.setAlpha(80);
+
 		averageThroughputTextWidth = averageThroughputPaint.measureText("XX.X kB/s");
 
 		setOnClickListener(v -> {
@@ -91,21 +108,24 @@ public class ThroughputGraph extends View {
 
 	@Override
 	protected void onRestoreInstanceState(final Parcelable state) {
-		final SavedState ss = (SavedState) state;
-
+		if (!(state instanceof SavedState ss)) {
+			super.onRestoreInstanceState(state);
+			return;
+		}
 		super.onRestoreInstanceState(ss.getSuperState());
 
 		currentMaxThroughput = ss.maxThroughput;
-		currentIndex = ss.currentPercent;
 		currentConnectionInterval = ss.currentConnectionInterval;
 		mtu = ss.mtu;
 		bufferSize = ss.bufferSize;
 		txPhy = ss.txPhy;
 		rxPhy = ss.rxPhy;
 		showMetadata = ss.showMetadata;
-		System.arraycopy(ss.averageThroughputData, 0, averageThroughputData, 0, averageThroughputData.length);
-		System.arraycopy(ss.connectionIntervalData, 0, connectionIntervalData, 0, connectionIntervalData.length);
-		System.arraycopy(ss.progressData, 0, progressData, 0, progressData.length);
+		series.clear();
+		for (final Series saved : ss.series) {
+			series.add(saved);
+		}
+		recalculate();
 	}
 
 	@Nullable
@@ -114,16 +134,13 @@ public class ThroughputGraph extends View {
 		final Parcelable superState = super.onSaveInstanceState();
 		final SavedState state = new SavedState(superState);
 		state.maxThroughput = currentMaxThroughput;
-		state.averageThroughputData = averageThroughputData;
-		state.connectionIntervalData = connectionIntervalData;
 		state.currentConnectionInterval = currentConnectionInterval;
 		state.mtu = mtu;
 		state.bufferSize = bufferSize;
 		state.txPhy = txPhy;
 		state.rxPhy = rxPhy;
-		state.progressData = progressData;
-		state.currentPercent = currentIndex;
 		state.showMetadata = showMetadata;
+		state.series = new ArrayList<>(series);
 		return state;
 	}
 
@@ -133,63 +150,75 @@ public class ThroughputGraph extends View {
 	protected void onDraw(@NotNull final Canvas canvas) {
 		super.onDraw(canvas);
 
-		if (currentIndex > 0) {
-			// First, draw the throughput path.
-			canvas.drawPath(throughputPath, averageThroughputFillPaint);
+		if (series.isEmpty()) {
+			return;
+		}
+		final Series current = series.get(series.size() - 1);
 
-			// Draw the horizontal lines indicating each 10 kB/s.
-			for (float h = height; h > 0; h -= tenKbPerSHeight) {
-				canvas.drawLine(0, h, width, h, horizontalLinesPaint);
-			}
+		// First, draw the throughput path of the current series.
+		canvas.drawPath(current.path, averageThroughputFillPaint);
 
-			// Draw the average throughput.
-			canvas.drawLines(averageThroughputPoints, 0, currentIndex << 2, averageThroughputPaint);
+		// Draw the horizontal lines indicating each 10 kB/s.
+		for (float h = height; h > 0; h -= tenKbPerSHeight) {
+			canvas.drawLine(0, h, width, h, horizontalLinesPaint);
+		}
 
-			// And print the average throughput value.
-			final String text = getResources().getString(R.string.image_upgrade_speed, averageThroughputData[currentIndex - 1]);
-			final float x = averageThroughputPoints[(currentIndex << 2) - 2] - averageThroughputTextWidth;
-			final float y = averageThroughputPoints[(currentIndex << 2) - 1] - 2 * averageThroughputPaint.getStrokeWidth();
-			canvas.drawText(text, Math.max(0, x), Math.max(0, y), averageThroughputPaint);
+		// Draw the previous series as dimmed lines.
+		for (int i = 0; i < series.size() - 1; i++) {
+			final Series old = series.get(i);
+			canvas.drawLines(old.points, 0, old.count << 2, previousThroughputPaint);
+		}
 
-			// Draw optional metadata.
-			// This is only for Android 8+, where the connection interval is available.
-			if (showMetadata && currentConnectionInterval > 0) {
-				float lastConnectionInterval = 0;
-				for (int i = 0; i < currentIndex; ++i) {
-					final float connectionInterval = connectionIntervalData[i];
+		// Draw the average throughput.
+		canvas.drawLines(current.points, 0, current.count << 2, averageThroughputPaint);
 
-					if (lastConnectionInterval != connectionInterval) {
-						final float px = averageThroughputPoints[(i << 2)];
-						final float py = averageThroughputPoints[(i << 2) + 1];
-						canvas.drawLine(px, py, px, height, parametersPaint);
+		// And print the average throughput value.
+		final int last = current.count - 1;
+		final String text = getResources().getString(R.string.image_upgrade_speed, current.averageThroughputData[last]);
+		final float x = current.points[(current.count << 2) - 2] - averageThroughputTextWidth;
+		final float y = current.points[(current.count << 2) - 1] - 2 * averageThroughputPaint.getStrokeWidth();
+		canvas.drawText(text, Math.max(0, x), Math.max(0, y), averageThroughputPaint);
 
-						float offset = 2 * parametersPaint.getStrokeWidth();
-						final String metadata = bufferSize > mtu  ?
-								getResources().getString(R.string.image_upgrade_ci_sar, mtu, bufferSize, getPhyAsString(), connectionInterval) :
-								getResources().getString(R.string.image_upgrade_ci, mtu, getPhyAsString(), connectionInterval);
-						final String[] parts = metadata.split("\n");
-						for (final String part : parts) {
-							canvas.drawText(
-									part,
-									px + 2 * parametersPaint.getStrokeWidth(),
-									height - offset,
-									parametersPaint
-							);
-							offset += parametersPaint.getTextSize();
-						}
+		// Draw optional metadata.
+		if (showMetadata && currentConnectionInterval > 0) {
+			float lastConnectionInterval = 0;
+			for (int i = 0; i < current.count; ++i) {
+				final float connectionInterval = current.connectionIntervalData[i];
+
+				if (lastConnectionInterval != connectionInterval) {
+					final float px = current.points[(i << 2)];
+					final float py = current.points[(i << 2) + 1];
+					canvas.drawLine(px, py, px, height, parametersPaint);
+
+					float offset = 2 * parametersPaint.getStrokeWidth();
+					final String metadata = bufferSize > mtu ?
+							getResources().getString(R.string.image_upgrade_ci_sar, mtu, bufferSize, getPhyAsString(), connectionInterval) :
+							getResources().getString(R.string.image_upgrade_ci, mtu, getPhyAsString(), connectionInterval);
+					final String[] parts = metadata.split("\n");
+					for (final String part : parts) {
+						canvas.drawText(
+								part,
+								px + 2 * parametersPaint.getStrokeWidth(),
+								height - offset,
+								parametersPaint
+						);
+						offset += parametersPaint.getTextSize();
 					}
-
-					lastConnectionInterval = connectionInterval;
 				}
+
+				lastConnectionInterval = connectionInterval;
 			}
 		}
 	}
 
 	private String getPhyAsString() {
-		if (txPhy == rxPhy) {
-			return txPhy.toString();
+		if (txPhy == null && rxPhy == null) {
+			return "?";
 		}
-		return txPhy.toString() + " / " + rxPhy.toString();
+		if (txPhy == rxPhy) {
+			return String.valueOf(txPhy);
+		}
+		return txPhy + " / " + rxPhy;
 	}
 
 	@Override
@@ -220,20 +249,31 @@ public class ThroughputGraph extends View {
 	 *
 	 * @param progress The current upload percentage for the measured throughout, from 0 to 100.
 	 * @param averageThroughput The average throughput in kB/s.
+	 * @param newSeries True to start a new series, keeping the previous ones dimmed.
 	 */
-	public void addProgress(final int progress, final float averageThroughput) {
-		if (currentIndex < averageThroughputData.length && progressData[currentIndex] == 0) {
-			averageThroughputData[currentIndex] = averageThroughput;
-			connectionIntervalData[currentIndex] = currentConnectionInterval;
-			progressData[currentIndex] = progress;
-			currentIndex += 1;
-
-			if (currentMaxThroughput < averageThroughput * 1.2f) {
-				currentMaxThroughput = averageThroughput * 1.2f;
-				recalculateMetadata();
-			}
-			recalculate();
+	public void addProgress(final int progress, final float averageThroughput, final boolean newSeries) {
+		if (progress < 0 || progress >= MAX_POINTS) {
+			return;
 		}
+		Series current = series.isEmpty() ? null : series.get(series.size() - 1);
+		// When the progress goes back (the upload was restarted or resumed), start a new series.
+		if (current == null || newSeries || (current.count > 0 && progress <= current.progressData[current.count - 1])) {
+			current = new Series();
+			series.add(current);
+			while (series.size() > MAX_OLD_SERIES + 1) {
+				series.remove(0);
+			}
+		}
+		final int i = current.count++;
+		current.averageThroughputData[i] = averageThroughput;
+		current.connectionIntervalData[i] = currentConnectionInterval;
+		current.progressData[i] = progress;
+
+		if (currentMaxThroughput < averageThroughput * 1.2f) {
+			currentMaxThroughput = averageThroughput * 1.2f;
+			recalculateMetadata();
+		}
+		recalculate();
 	}
 
 	/**
@@ -242,12 +282,12 @@ public class ThroughputGraph extends View {
 	 * @param interval the connection interval, in milliseconds.
 	 * @param mtu current MTU.
 	 * @param bufferSize maximum McuMgr buffer size.
-	 * @param txPhy	current TX PHY used.
-	 * @param rxPhy	current RX PHY used.
+	 * @param txPhy	current TX PHY used, or null if unknown.
+	 * @param rxPhy	current RX PHY used, or null if unknown.
 	 */
 	public void setConnectionParameters(final float interval,
 										final int mtu, final int bufferSize,
-										final Phy txPhy, final Phy rxPhy) {
+										@Nullable final Phy txPhy, @Nullable final Phy rxPhy) {
 		this.currentConnectionInterval = interval;
 		this.mtu = mtu;
 		this.bufferSize = bufferSize;
@@ -259,8 +299,7 @@ public class ThroughputGraph extends View {
 	 * Clears the graph.
 	 */
 	public void clear() {
-		Arrays.fill(progressData, 0);
-		currentIndex = 0;
+		series.clear();
 		currentMaxThroughput = maxThroughput;
 		invalidate();
 	}
@@ -268,13 +307,20 @@ public class ThroughputGraph extends View {
 	// Helper methods ------------------------------------------------------------------------------
 
 	private void recalculate() {
+		for (final Series item : series) {
+			recalculate(item);
+		}
+		invalidate();
+	}
+
+	private void recalculate(final Series item) {
 		float previousX = 0, previousY = 0;
 
-		throughputPath.rewind();
-		for (int i = 0; i < currentIndex; ++i) {
-			final float progress = progressData[i] / 100.0f;
+		item.path.rewind();
+		for (int i = 0; i < item.count; ++i) {
+			final float progress = item.progressData[i] / 100.0f;
 			final float x = (float) width * progress;
-			final float y = height - height * averageThroughputData[i] / currentMaxThroughput;
+			final float y = height - height * item.averageThroughputData[i] / currentMaxThroughput;
 			if (i == 0) {
 				// As there's no previous X coordinate, let's just estimate it.
 				// It cannot be 0, as the upload may start from any point when resumed.
@@ -282,23 +328,23 @@ public class ThroughputGraph extends View {
 				// There is also no average for older values, so use instantaneous value this time.
 				previousY = y;
 
-				throughputPath.moveTo(previousX, height);
-				throughputPath.lineTo(previousX, y);
+				item.path.moveTo(previousX, height);
+				item.path.lineTo(previousX, y);
 			}
-			averageThroughputPoints[4 * i] = previousX;
-			averageThroughputPoints[4 * i + 1] = previousY;
-			averageThroughputPoints[4 * i + 2] = x;
-			averageThroughputPoints[4 * i + 3] = y;
+			item.points[4 * i] = previousX;
+			item.points[4 * i + 1] = previousY;
+			item.points[4 * i + 2] = x;
+			item.points[4 * i + 3] = y;
 
-			throughputPath.lineTo(x, y);
+			item.path.lineTo(x, y);
 
 			previousX = x;
 			previousY = y;
 		}
-		throughputPath.rLineTo(0, height - previousY);
-		throughputPath.close();
-
-		invalidate();
+		if (item.count > 0) {
+			item.path.rLineTo(0, height - previousY);
+			item.path.close();
+		}
 	}
 
 	private void recalculateMetadata() {
@@ -311,14 +357,11 @@ public class ThroughputGraph extends View {
 
 	static class SavedState extends BaseSavedState {
 		private float maxThroughput;
-		private float[] averageThroughputData;
-		private float[] connectionIntervalData;
 		private float currentConnectionInterval;
 		private int mtu, bufferSize;
-		private Phy txPhy, rxPhy;
-		private int[] progressData;
-		private int currentPercent;
+		@Nullable private Phy txPhy, rxPhy;
 		private boolean showMetadata;
+		private List<Series> series = new ArrayList<>();
 
 		/**
 		 * Constructor called from {@link ThroughputGraph#onSaveInstanceState()}
@@ -330,32 +373,40 @@ public class ThroughputGraph extends View {
 		SavedState(Parcel in) {
 			super(in);
 			maxThroughput = in.readFloat();
-			averageThroughputData = in.createFloatArray();
-			connectionIntervalData = in.createFloatArray();
 			currentConnectionInterval = in.readFloat();
 			mtu = in.readInt();
 			bufferSize = in.readInt();
 			txPhy = (Phy) in.readSerializable();
 			rxPhy = (Phy) in.readSerializable();
-			progressData = in.createIntArray();
-			currentPercent = in.readInt();
 			showMetadata = in.readInt() == 1;
+			final int size = in.readInt();
+			for (int i = 0; i < size; i++) {
+				final Series item = new Series();
+				item.count = in.readInt();
+				in.readFloatArray(item.averageThroughputData);
+				in.readFloatArray(item.connectionIntervalData);
+				in.readIntArray(item.progressData);
+				series.add(item);
+			}
 		}
 
 		@Override
 		public void writeToParcel(Parcel dest, int flags) {
 			super.writeToParcel(dest, flags);
 			dest.writeFloat(maxThroughput);
-			dest.writeFloatArray(averageThroughputData);
-			dest.writeFloatArray(connectionIntervalData);
 			dest.writeFloat(currentConnectionInterval);
 			dest.writeInt(mtu);
 			dest.writeInt(bufferSize);
 			dest.writeSerializable(txPhy);
 			dest.writeSerializable(rxPhy);
-			dest.writeIntArray(progressData);
-			dest.writeInt(currentPercent);
 			dest.writeInt(showMetadata ? 1 : 0);
+			dest.writeInt(series.size());
+			for (final Series item : series) {
+				dest.writeInt(item.count);
+				dest.writeFloatArray(item.averageThroughputData);
+				dest.writeFloatArray(item.connectionIntervalData);
+				dest.writeIntArray(item.progressData);
+			}
 		}
 
 		public static final Creator<SavedState> CREATOR = new Creator<>() {

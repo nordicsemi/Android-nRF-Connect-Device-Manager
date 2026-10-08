@@ -82,9 +82,8 @@ class McuMgrTransportModule {
     ): McuMgrTransport = McuMgrBleTransport(centralManager, peripheral, scope)
         .also { transport ->
             transport.setLogger(logger)
-            peripheral.state
-                .filter { it.isDisconnected }
-                .onEach { logController.verbose = true }
+            transport.state
+                .onEach { logController.linkReady = it == McuMgrBleTransport.State.Connected }
                 .launchIn(scope)
         }
 }

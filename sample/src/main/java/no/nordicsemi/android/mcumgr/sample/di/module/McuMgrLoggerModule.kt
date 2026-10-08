@@ -35,6 +35,6 @@ class McuMgrLoggerModule {
     fun providesMcuMgrLogger(
         logController: LogController,
     ): Log.Sink<Log.Category> = Log.Sink.Timber { _, level ->
-        logController.verbose || level >= Log.Level.WARN
+        logController.isLoggable(level)
     }
 }
