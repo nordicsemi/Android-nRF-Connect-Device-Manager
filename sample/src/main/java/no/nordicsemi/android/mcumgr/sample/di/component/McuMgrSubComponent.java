@@ -21,7 +21,6 @@ import no.nordicsemi.android.mcumgr.sample.di.module.CentralManagerModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.EnvironmentModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrActivitiesModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrFragmentBuildersModule;
-import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrLoggerModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrManagerModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrTransportModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrViewModelModule;
@@ -36,7 +35,6 @@ import no.nordicsemi.android.mcumgr.sample.di.module.ObservabilityModule;
         EnvironmentModule.class,
         ObservabilityModule.class,
         McuMgrManagerModule.class,
-        McuMgrLoggerModule.class
 })
 @McuMgrScope
 public interface McuMgrSubComponent {

@@ -24,7 +24,7 @@ import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.ResetViewModel;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.StatsViewModel;
 
 /**
- * A sub component to create ViewModels. It is called by the
+ * A subcomponent to create ViewModels. It is called by the
  * {@link McuMgrViewModelFactory}. Using this component allows
  * ViewModels to define {@link javax.inject.Inject} constructors.
  */

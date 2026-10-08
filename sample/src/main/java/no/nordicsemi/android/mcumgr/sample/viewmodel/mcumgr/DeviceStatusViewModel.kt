@@ -9,7 +9,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import no.nordicsemi.android.mcumgr.McuMgrCallback
 import no.nordicsemi.android.mcumgr.McuMgrTransport
@@ -19,19 +21,18 @@ import no.nordicsemi.android.mcumgr.managers.DefaultManager
 import no.nordicsemi.android.mcumgr.response.dflt.McuMgrAppInfoResponse
 import no.nordicsemi.android.mcumgr.response.dflt.McuMgrBootloaderInfoResponse
 import no.nordicsemi.android.mcumgr.response.dflt.McuMgrParamsResponse
-import no.nordicsemi.android.mcumgr.sample.observable.ConnectionState
-import no.nordicsemi.android.mcumgr.sample.observable.ObservableMcuMgrBleTransport
+import no.nordicsemi.android.mcumgr.sample.profile.LegacyDeviceInfoProfile
 import no.nordicsemi.android.observability.ObservabilityManager
 import no.nordicsemi.android.observability.data.ChunksEmitter
 import no.nordicsemi.android.ota.DeviceInfo
 import no.nordicsemi.android.ota.mcumgr.MemfaultDeviceInfoResponse
 import no.nordicsemi.android.ota.mcumgr.MemfaultManager
 import no.nordicsemi.android.ota.mcumgr.MemfaultProjectKeyResponse
-import no.nordicsemi.kotlin.ble.client.android.Peripheral
 import no.nordicsemi.kotlin.ble.core.BondState
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
+import no.nordicsemi.kotlin.ble.core.ConnectionState as BleConnectionState
 
 sealed class FeatureState<out T> {
     class Supported<T>(val result: T) : FeatureState<T>()
@@ -39,10 +40,20 @@ sealed class FeatureState<out T> {
     object Unknown : FeatureState<Nothing>()
 }
 
+enum class ConnectionState {
+    CONNECTING,
+    INITIALIZING,
+    READY,
+    DISCONNECTING,
+    DISCONNECTED,
+    TIMEOUT,
+    NOT_SUPPORTED
+}
+
 class DeviceStatusViewModel @Inject internal constructor(
     private val defaultManager: DefaultManager,
     private val memfaultManager: MemfaultManager,
-    peripheral: Peripheral,
+    private val legacyDeviceInfo: LegacyDeviceInfoProfile,
     observabilityManager: ObservabilityManager,
     @Named("busy") state: MutableLiveData<Boolean?>?
 ) : McuMgrViewModel(state) {
@@ -70,8 +81,8 @@ class DeviceStatusViewModel @Inject internal constructor(
                 readAppInfo("sv") {
                     readOta {
                         readBootloaderName { name ->
-                            readActiveSlot {
-                                if ("MCUboot" == name) {
+                            if ("MCUboot" == name) {
+                                readActiveSlot {
                                     readMcuBootMode(null)
                                 }
                             }
@@ -84,30 +95,55 @@ class DeviceStatusViewModel @Inject internal constructor(
 
     init {
         val transport = defaultManager.transporter
-        if (transport is ObservableMcuMgrBleTransport) {
-            this.connectionState = transport.state
+        val connectionStateLiveData = MutableLiveData<ConnectionState>()
+        if (transport is McuMgrBleTransport) {
+            // A Bluetooth LE transport can report the state of the link in detail. The service
+            // counts as ready only once SMP is usable, not merely when the device is connected.
+            transport.peripheral.state
+                .combine(transport.state) { peripheralState, transportState ->
+                    when (peripheralState) {
+                        is BleConnectionState.Connecting -> ConnectionState.CONNECTING
+                        is BleConnectionState.Connected -> when (transportState) {
+                            is McuMgrBleTransport.State.Connected -> ConnectionState.READY
+                            is McuMgrBleTransport.State.Initializing -> ConnectionState.INITIALIZING
+                            // A device without a usable SMP service is not disconnected, so
+                            // a disconnected transport on a connected device means just that.
+                            is McuMgrBleTransport.State.Disconnected -> ConnectionState.NOT_SUPPORTED
+                        }
+                        is BleConnectionState.Disconnecting -> ConnectionState.DISCONNECTING
+                        is BleConnectionState.Disconnected -> when (peripheralState.reason) {
+                            is BleConnectionState.Disconnected.Reason.Timeout ->
+                                ConnectionState.TIMEOUT
+                            is BleConnectionState.Disconnected.Reason.RequiredServiceNotFound ->
+                                ConnectionState.NOT_SUPPORTED
+                            else -> ConnectionState.DISCONNECTED
+                        }
+                    }
+                }
+                .onEach { connectionStateLiveData.postValue(it) }
+                .launchIn(viewModelScope)
         } else {
-            val liveData = MutableLiveData<ConnectionState>()
+            // Any other transport only tells us whether it is connected.
             transport.addObserver(object : McuMgrTransport.ConnectionObserver {
                 override fun onConnected() {
-                    liveData.postValue(ConnectionState.READY)
+                    connectionStateLiveData.postValue(ConnectionState.READY)
                 }
 
                 override fun onDisconnected() {
-                    liveData.postValue(ConnectionState.DISCONNECTED)
+                    connectionStateLiveData.postValue(ConnectionState.DISCONNECTED)
                 }
             })
-            this.connectionState = liveData
         }
+        this.connectionState = connectionStateLiveData
         connectionState.observeForever(connectionStateObserver)
 
         observabilityManager.state
             .onEach { observabilityLiveData.postValue(it.state) }
             .launchIn(viewModelScope)
 
-        peripheral.bondState
-            .onEach { bondStateLiveData.postValue(it) }
-            .launchIn(viewModelScope)
+        (transport as? McuMgrBleTransport)?.peripheral?.bondState
+            ?.onEach { bondStateLiveData.postValue(it) }
+            ?.launchIn(viewModelScope)
     }
 
     override fun onCleared() {
@@ -167,14 +203,9 @@ class DeviceStatusViewModel @Inject internal constructor(
             }
 
             override fun onError(error: McuMgrException) {
-                val transport = defaultManager.transporter
-                if (transport is McuMgrBleTransport) {
-                    val maxPacketLength = transport.maxPacketLength
-                    val mcuParams = McuMgrBufferParams(maxPacketLength)
-                    bufferLiveData.postValue(mcuParams)
-                } else {
-                    bufferLiveData.postValue(null)
-                }
+                val maxPacketLength = (defaultManager.transporter as? McuMgrBleTransport)
+                    ?.maxPacketLength
+                bufferLiveData.postValue(maxPacketLength?.let { McuMgrBufferParams(it) })
                 then?.run()
             }
         })
@@ -206,7 +237,7 @@ class DeviceStatusViewModel @Inject internal constructor(
      * A callback to be invoked when the bootloader name is read.
      */
     private fun interface BootloaderNameCallback {
-        fun onBootloaderNameReceived(bootloaderName: String)
+        fun onBootloaderNameReceived(bootloaderName: String?)
     }
 
     /**
@@ -225,6 +256,7 @@ class DeviceStatusViewModel @Inject internal constructor(
 
                 override fun onError(error: McuMgrException) {
                     bootloaderNameLiveData.postValue(null)
+                    then?.onBootloaderNameReceived(null)
                 }
             })
     }
@@ -308,14 +340,13 @@ class DeviceStatusViewModel @Inject internal constructor(
             override fun onError(error: McuMgrException) {
                 // If Memfault group is not supported, check if the data were read
                 // using Device Information Service (temporary, legacy solution, will be removed).
-                val transport = defaultManager.transporter
-                if (transport is ObservableMcuMgrBleTransport && transport.projectKey != null) {
-                    val featureState = transport.deviceInfo
-                        ?.let { FeatureState.Supported(it) } ?: FeatureState.NotSupported
-                    otaLiveData.postValue(featureState)
+                val deviceInfo = legacyDeviceInfo.deviceInfo.value
+                val featureState = if (legacyDeviceInfo.projectKey.value != null && deviceInfo != null) {
+                    FeatureState.Supported(deviceInfo)
                 } else {
-                    otaLiveData.postValue(FeatureState.NotSupported)
+                    FeatureState.NotSupported
                 }
+                otaLiveData.postValue(featureState)
                 then?.run()
             }
         })

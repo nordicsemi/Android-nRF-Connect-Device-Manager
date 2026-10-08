@@ -45,7 +45,7 @@ import no.nordicsemi.android.mcumgr.sample.dialog.HelpDialogFragment;
 import no.nordicsemi.android.mcumgr.sample.dialog.ReleaseInformationDialogFragment;
 import no.nordicsemi.android.mcumgr.sample.dialog.SelectBinaryDialogFragment;
 import no.nordicsemi.android.mcumgr.sample.dialog.WarningDialogFragment;
-import no.nordicsemi.android.mcumgr.sample.observable.ConnectionParameters;
+import no.nordicsemi.android.mcumgr.sample.graph.ThroughputParameters;
 import no.nordicsemi.android.mcumgr.sample.utils.StringUtils;
 import no.nordicsemi.android.mcumgr.sample.utils.ZipPackage;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.ImageUpgradeViewModel;
@@ -222,7 +222,7 @@ public class ImageUpgradeFragment extends FileBrowserFragment implements Injecta
                 );
             }
         });
-        final LiveData<ConnectionParameters> parametersLiveData = viewModel.getConnectionParameters();
+        final LiveData<ThroughputParameters> parametersLiveData = viewModel.getConnectionParameters();
         if (parametersLiveData != null) {
             parametersLiveData.observe(getViewLifecycleOwner(), parameters -> {
                 if (parameters != null) {

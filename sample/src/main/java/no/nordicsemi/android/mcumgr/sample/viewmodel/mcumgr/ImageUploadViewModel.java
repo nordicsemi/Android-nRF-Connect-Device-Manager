@@ -15,15 +15,16 @@ import java.util.Arrays;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import no.nordicsemi.android.ble.ConnectionPriorityRequest;
 import no.nordicsemi.android.mcumgr.McuMgrCallback;
 import no.nordicsemi.android.mcumgr.McuMgrTransport;
-import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
 import no.nordicsemi.android.mcumgr.exception.McuMgrException;
 import no.nordicsemi.android.mcumgr.image.McuMgrImage;
 import no.nordicsemi.android.mcumgr.image.SUITImage;
 import no.nordicsemi.android.mcumgr.managers.ImageManager;
 import no.nordicsemi.android.mcumgr.response.img.McuMgrImageStateResponse;
+import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
+import no.nordicsemi.android.mcumgr.sample.log.LogController;
+import no.nordicsemi.kotlin.ble.client.android.ConnectionPriority;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.SingleLiveEvent;
 import no.nordicsemi.android.mcumgr.transfer.TransferController;
 import no.nordicsemi.android.mcumgr.transfer.UploadCallback;
@@ -50,6 +51,8 @@ public class ImageUploadViewModel extends McuMgrViewModel implements UploadCallb
     }
 
     private final ImageManager manager;
+    private final McuMgrTransport transport;
+    private final LogController logging;
     private TransferController controller;
 
     private final MutableLiveData<State> stateLiveData = new MutableLiveData<>();
@@ -64,8 +67,12 @@ public class ImageUploadViewModel extends McuMgrViewModel implements UploadCallb
 
     @Inject
     ImageUploadViewModel(final ImageManager manager,
+                         final McuMgrTransport transport,
+                         final LogController logging,
                          @Named("busy") final MutableLiveData<Boolean> state) {
         super(state);
+        this.transport = transport;
+        this.logging = logging;
         this.manager = manager;
         this.stateLiveData.setValue(State.IDLE);
         this.progressLiveData.setValue(0);
@@ -245,16 +252,12 @@ public class ImageUploadViewModel extends McuMgrViewModel implements UploadCallb
     }
 
     private void requestHighConnectionPriority() {
-        final McuMgrTransport transporter = manager.getTransporter();
-        if (transporter instanceof McuMgrBleTransport bleTransporter) {
-            bleTransporter.requestConnPriority(ConnectionPriorityRequest.CONNECTION_PRIORITY_HIGH);
+        if (transport instanceof McuMgrBleTransport ble) {
+            ble.requestConnectionPriority(ConnectionPriority.HIGH);
         }
     }
 
     private void setLoggingEnabled(final boolean enabled) {
-        final McuMgrTransport transporter = manager.getTransporter();
-        if (transporter instanceof McuMgrBleTransport bleTransporter) {
-            bleTransporter.setLoggingEnabled(enabled);
-        }
+        logging.setVerbose(enabled);
     }
 }

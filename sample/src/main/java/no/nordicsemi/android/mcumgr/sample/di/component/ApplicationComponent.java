@@ -15,11 +15,12 @@ import no.nordicsemi.android.mcumgr.sample.application.Dagger2Application;
 import no.nordicsemi.android.mcumgr.sample.di.module.ActivitiesModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.ContextModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.FragmentsModule;
+import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrLoggerModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.McuMgrModule;
 import no.nordicsemi.android.mcumgr.sample.di.module.ViewModelModule;
 
 /**
- * Check this: https://github.com/googlesamples/android-architecture-components
+ * Check <a href="https://github.com/googlesamples/android-architecture-components">Architecture Components</a>
  * for more details.
  */
 @Component(modules = {
@@ -29,7 +30,8 @@ import no.nordicsemi.android.mcumgr.sample.di.module.ViewModelModule;
         ActivitiesModule.class,
         FragmentsModule.class,
         ViewModelModule.class,
-        McuMgrModule.class
+        McuMgrModule.class,
+        McuMgrLoggerModule.class,
 })
 @Singleton
 public interface ApplicationComponent {

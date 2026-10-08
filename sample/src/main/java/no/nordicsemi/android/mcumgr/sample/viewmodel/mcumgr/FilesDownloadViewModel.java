@@ -13,18 +13,21 @@ import androidx.lifecycle.MutableLiveData;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import no.nordicsemi.android.ble.ConnectionPriorityRequest;
 import no.nordicsemi.android.mcumgr.McuMgrTransport;
 import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
 import no.nordicsemi.android.mcumgr.exception.McuMgrException;
 import no.nordicsemi.android.mcumgr.managers.FsManager;
+import no.nordicsemi.android.mcumgr.sample.log.LogController;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.SingleLiveEvent;
 import no.nordicsemi.android.mcumgr.transfer.DownloadCallback;
 import no.nordicsemi.android.mcumgr.transfer.TransferController;
+import no.nordicsemi.kotlin.ble.client.android.ConnectionPriority;
 
 @SuppressWarnings("unused")
 public class FilesDownloadViewModel extends McuMgrViewModel implements DownloadCallback {
     private final FsManager manager;
+    private final McuMgrTransport transport;
+    private final LogController logging;
     private TransferController controller;
 
     private final MutableLiveData<Integer> progressLiveData = new MutableLiveData<>();
@@ -34,8 +37,12 @@ public class FilesDownloadViewModel extends McuMgrViewModel implements DownloadC
 
     @Inject
     FilesDownloadViewModel(final FsManager manager,
+                           final McuMgrTransport transport,
+                           final LogController logging,
                            @Named("busy") final MutableLiveData<Boolean> state) {
         super(state);
+        this.transport = transport;
+        this.logging = logging;
         this.manager = manager;
     }
 
@@ -128,18 +135,12 @@ public class FilesDownloadViewModel extends McuMgrViewModel implements DownloadC
     }
 
     private void requestHighConnectionPriority() {
-        final McuMgrTransport transporter = manager.getTransporter();
-        if (transporter instanceof McuMgrBleTransport) {
-            final McuMgrBleTransport bleTransporter = (McuMgrBleTransport) transporter;
-            bleTransporter.requestConnPriority(ConnectionPriorityRequest.CONNECTION_PRIORITY_HIGH);
+        if (transport instanceof McuMgrBleTransport ble) {
+            ble.requestConnectionPriority(ConnectionPriority.HIGH);
         }
     }
 
     private void setLoggingEnabled(final boolean enabled) {
-        final McuMgrTransport transporter = manager.getTransporter();
-        if (transporter instanceof McuMgrBleTransport) {
-            final McuMgrBleTransport bleTransporter = (McuMgrBleTransport) transporter;
-            bleTransporter.setLoggingEnabled(enabled);
-        }
+        logging.setVerbose(enabled);
     }
 }

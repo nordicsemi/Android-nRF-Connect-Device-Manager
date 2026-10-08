@@ -13,11 +13,12 @@ import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Arrays;
 
-import no.nordicsemi.android.ble.annotation.PhyValue;
-import no.nordicsemi.android.ble.callback.PhyCallback;
 import no.nordicsemi.android.mcumgr.sample.R;
+import no.nordicsemi.kotlin.ble.core.Phy;
 
 @SuppressWarnings("unused")
 public class ThroughputGraph extends View {
@@ -38,8 +39,7 @@ public class ThroughputGraph extends View {
 
 	private float currentMaxThroughput, maxThroughput, currentConnectionInterval;
 	private int mtu, bufferSize;
-	@PhyValue
-	private int	txPhy, rxPhy;
+	private Phy txPhy, rxPhy;
 	private int currentIndex;
 	private final Path throughputPath = new Path();
 	private final float[] averageThroughputPoints = new float[4 * 101];
@@ -130,7 +130,7 @@ public class ThroughputGraph extends View {
 	// Drawing -------------------------------------------------------------------------------------
 
 	@Override
-	protected void onDraw(final Canvas canvas) {
+	protected void onDraw(@NotNull final Canvas canvas) {
 		super.onDraw(canvas);
 
 		if (currentIndex > 0) {
@@ -187,18 +187,9 @@ public class ThroughputGraph extends View {
 
 	private String getPhyAsString() {
 		if (txPhy == rxPhy) {
-			return getPhyAsString(txPhy);
+			return txPhy.toString();
 		}
-		return getPhyAsString(txPhy) + " / " + getPhyAsString(rxPhy);
-	}
-
-	private static String getPhyAsString(@PhyValue final int phy) {
-        return switch (phy) {
-            case PhyCallback.PHY_LE_CODED -> "LE Coded";
-            case PhyCallback.PHY_LE_2M -> "LE 2M";
-			case PhyCallback.PHY_LE_1M -> "LE 1M";
-            default -> "Unknown (" + phy + ")";
-        };
+		return txPhy.toString() + " / " + rxPhy.toString();
 	}
 
 	@Override
@@ -256,7 +247,7 @@ public class ThroughputGraph extends View {
 	 */
 	public void setConnectionParameters(final float interval,
 										final int mtu, final int bufferSize,
-										final int txPhy, final int rxPhy) {
+										final Phy txPhy, final Phy rxPhy) {
 		this.currentConnectionInterval = interval;
 		this.mtu = mtu;
 		this.bufferSize = bufferSize;
@@ -323,7 +314,8 @@ public class ThroughputGraph extends View {
 		private float[] averageThroughputData;
 		private float[] connectionIntervalData;
 		private float currentConnectionInterval;
-		private int mtu, bufferSize, txPhy, rxPhy;
+		private int mtu, bufferSize;
+		private Phy txPhy, rxPhy;
 		private int[] progressData;
 		private int currentPercent;
 		private boolean showMetadata;
@@ -343,8 +335,8 @@ public class ThroughputGraph extends View {
 			currentConnectionInterval = in.readFloat();
 			mtu = in.readInt();
 			bufferSize = in.readInt();
-			txPhy = in.readInt();
-			rxPhy = in.readInt();
+			txPhy = (Phy) in.readSerializable();
+			rxPhy = (Phy) in.readSerializable();
 			progressData = in.createIntArray();
 			currentPercent = in.readInt();
 			showMetadata = in.readInt() == 1;
@@ -359,8 +351,8 @@ public class ThroughputGraph extends View {
 			dest.writeFloat(currentConnectionInterval);
 			dest.writeInt(mtu);
 			dest.writeInt(bufferSize);
-			dest.writeInt(txPhy);
-			dest.writeInt(rxPhy);
+			dest.writeSerializable(txPhy);
+			dest.writeSerializable(rxPhy);
 			dest.writeIntArray(progressData);
 			dest.writeInt(currentPercent);
 			dest.writeInt(showMetadata ? 1 : 0);

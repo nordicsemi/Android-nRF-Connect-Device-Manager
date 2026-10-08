@@ -6,9 +6,8 @@
 
 package no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr;
 
-import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -24,10 +23,8 @@ import java.net.URI;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import no.nordicsemi.android.ble.ConnectionPriorityRequest;
 import no.nordicsemi.android.mcumgr.McuMgrErrorCode;
 import no.nordicsemi.android.mcumgr.McuMgrTransport;
-import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
 import no.nordicsemi.android.mcumgr.dfu.FirmwareUpgradeCallback;
 import no.nordicsemi.android.mcumgr.dfu.FirmwareUpgradeController;
 import no.nordicsemi.android.mcumgr.dfu.FirmwareUpgradeSettings;
@@ -38,8 +35,12 @@ import no.nordicsemi.android.mcumgr.dfu.suit.model.CacheImageSet;
 import no.nordicsemi.android.mcumgr.exception.McuMgrErrorException;
 import no.nordicsemi.android.mcumgr.exception.McuMgrException;
 import no.nordicsemi.android.mcumgr.image.SUITImage;
-import no.nordicsemi.android.mcumgr.sample.observable.ConnectionParameters;
-import no.nordicsemi.android.mcumgr.sample.observable.ObservableMcuMgrBleTransport;
+import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
+import no.nordicsemi.android.mcumgr.sample.log.LogController;
+import no.nordicsemi.android.mcumgr.sample.graph.ThroughputParameters;
+import no.nordicsemi.android.mcumgr.sample.profile.LegacyDeviceInfoProfile;
+import no.nordicsemi.kotlin.ble.client.android.ConnectionPriority;
+import kotlinx.coroutines.CoroutineScope;
 import no.nordicsemi.android.mcumgr.sample.utils.ZipPackage;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.SingleLiveEvent;
 import no.nordicsemi.android.ota.DeviceInfo;
@@ -83,8 +84,10 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
         }
     }
 
-    @Nullable
-    private final McuMgrBleTransport bleTransport;
+    private final McuMgrTransport transport;
+    private final LogController logging;
+    private final LegacyDeviceInfoProfile legacyDeviceInfo;
+    private final CoroutineScope scope;
     @NonNull
     private final FirmwareUpgradeManager manager;
     @NonNull
@@ -113,14 +116,15 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     ImageUpgradeViewModel(@NonNull final McuMgrTransport transporter,
                           @NonNull final FirmwareUpgradeManager manager,
                           @NonNull final SUITUpgradeManager suitManager,
-                          @NonNull final HandlerThread thread,
+                          @NonNull final LogController logging,
+                          @NonNull final LegacyDeviceInfoProfile legacyDeviceInfo,
+                          @NonNull final CoroutineScope scope,
                           @NonNull @Named("busy") final MutableLiveData<Boolean> state) {
         super(state);
-        if (transporter instanceof McuMgrBleTransport bleTransporter) {
-            this.bleTransport = bleTransporter;
-        } else {
-            this.bleTransport = null;
-        }
+        this.transport = transporter;
+        this.logging = logging;
+        this.legacyDeviceInfo = legacyDeviceInfo;
+        this.scope = scope;
         this.manager = manager;
         this.manager.setFirmwareUpgradeCallback(new FirmwareUpgradeCallback<>() {
 
@@ -155,6 +159,7 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
 
             @Override
             public void onUploadProgressChanged(final int bytesSent, final int imageSize, final long timestamp) {
+                setLoggingEnabled(bytesSent == imageSize);
                 ImageUpgradeViewModel.this.onUploadProgressChanged(bytesSent, imageSize, timestamp);
             }
 
@@ -228,7 +233,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 ImageUpgradeViewModel.this.onUpgradeFailed(error);
             }
         });
-        this.handler = new Handler(thread.getLooper());
+        // The handler only drives the progress refresh, so the main looper is enough.
+        this.handler = new Handler(Looper.getMainLooper());
 
         stateLiveData.setValue(State.IDLE);
         progressLiveData.setValue(null);
@@ -264,13 +270,13 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
         return progressLiveData;
     }
 
+    /**
+     * The parameters of the link shown on the throughput graph, or null when the transport is
+     * not a Bluetooth LE one and has no link to report on.
+     */
     @Nullable
-    public LiveData<ConnectionParameters> getConnectionParameters() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            bleTransport instanceof ObservableMcuMgrBleTransport ot) {
-            return ot.getConnectionParameters();
-        }
-        return null;
+    public LiveData<ThroughputParameters> getConnectionParameters() {
+        return ThroughputParameters.observe(transport, scope);
     }
 
     @NonNull
@@ -299,14 +305,33 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     }
 
     public void checkForUpdate() {
-        if (bleTransport instanceof ObservableMcuMgrBleTransport ot) {
-            setBusy();
-            ot.connect(new McuMgrTransport.ConnectionCallback() {
-                @Override
-                public void onConnected() {
-                    // First, try getting device info by reading from Memfault group.
-                    final OtaManager otaManager = new OtaManager();
-                    otaManager.getLatestRelease(ot, new ReleaseCallback() {
+        setBusy();
+        final OtaManager otaManager = new OtaManager();
+
+        // First, try getting the device info by reading from the Memfault group.
+        otaManager.getLatestRelease(transport, new ReleaseCallback() {
+            @Override
+            public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
+                postReady();
+                otaReadyEvent.postValue(releaseInformation);
+            }
+
+            @Override
+            public void onError(final @NotNull Throwable t) {
+                logError(t);
+
+                // If there's no Memfault group, read the same data from Device Information
+                // Service (DIS). This is legacy mode. It will be removed in the future.
+                if (t instanceof McuMgrException) {
+                    final DeviceInfo deviceInfo = legacyDeviceInfo.getDeviceInfo().getValue();
+                    final String projectKey = legacyDeviceInfo.getProjectKey().getValue();
+                    if (deviceInfo == null || projectKey == null) {
+                        postReady();
+                        otaNotSupportedEvent.post();
+                        return;
+                    }
+
+                    otaManager.getLatestRelease(deviceInfo, projectKey, new ReleaseCallback() {
                         @Override
                         public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
                             postReady();
@@ -316,58 +341,16 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                         @Override
                         public void onError(final @NotNull Throwable t) {
                             logError(t);
-
-                            // If there's no Memfault group, read the same data from Device Information Service (DIS).
-                            // This is legacy mode. It will be removed in the future with the following:
-                            if (t instanceof McuMgrException) {
-                                final DeviceInfo deviceInfo = ot.getDeviceInfo();
-                                final String projectKey = ot.getProjectKey();
-                                if (deviceInfo == null || projectKey == null) {
-                                    postReady();
-                                    otaNotSupportedEvent.post();
-                                    return;
-                                }
-
-                                otaManager.getLatestRelease(deviceInfo, projectKey, new ReleaseCallback() {
-                                    @Override
-                                    public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
-                                        postReady();
-                                        otaReadyEvent.postValue(releaseInformation);
-                                    }
-
-                                    @Override
-                                    public void onError(final @NotNull Throwable t) {
-                                        logError(t);
-                                        postReady();
-                                        networkErrorEvent.postValue(t);
-                                    }
-                                });
-                            } else {
-                                postReady();
-                                networkErrorEvent.postValue(t);
-                            }
+                            postReady();
+                            networkErrorEvent.postValue(t);
                         }
                     });
-                }
-
-                @Override
-                public void onDeferred() {
-                    // This is never called with BLE transport.
-                }
-
-                @Override
-                public void onError(final @NotNull Throwable t) {
+                } else {
                     postReady();
-                    if (t instanceof McuMgrException e) {
-                        errorLiveData.postValue(e);
-                    } else {
-                        errorLiveData.postValue(new McuMgrException(t));
-                    }
+                    networkErrorEvent.postValue(t);
                 }
-            });
-        } else {
-            otaNotSupportedEvent.post();
-        }
+            }
+        });
     }
 
     public void upgrade(@NonNull final byte[] data,
@@ -659,15 +642,13 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     }
 
     private void requestHighConnectionPriority() {
-        if (bleTransport != null) {
-            bleTransport.requestConnPriority(ConnectionPriorityRequest.CONNECTION_PRIORITY_HIGH);
+        if (transport instanceof McuMgrBleTransport ble) {
+            ble.requestConnectionPriority(ConnectionPriority.HIGH);
         }
     }
 
     private void setLoggingEnabled(final boolean enabled) {
-        if (bleTransport != null) {
-            bleTransport.setLoggingEnabled(enabled);
-        }
+        logging.setVerbose(enabled);
     }
 
     private void logError(final @NotNull Throwable throwable) {
