@@ -14,8 +14,10 @@
     <string name="image_upgrade_hash">Hash:</string>
     <string name="image_upgrade_status">State:</string>
     <string name="image_upgrade_speed">%.1f kB/s</string>
-    <string name="image_upgrade_ci">MTU: %d\nPHY: %s\nINTV: %.2f ms</string>
-    <string name="image_upgrade_ci_sar">MTU: %d (SAR: %d B)\nPHY: %s\nINTV: %.2f ms</string>
+    <string name="image_upgrade_mtu">MTU: %d</string>
+    <string name="image_upgrade_mtu_sar">MTU: %d (SAR: %d B)</string>
+    <string name="image_upgrade_phy">PHY: %s</string>
+    <string name="image_upgrade_intv">INTV: %.2f ms</string>
     <string name="image_upgrade_erase_storage">Erase application settings</string>
     <string name="image_upgrade_erase_storage_descr">About erase application settings feature</string>
     <string name="image_upgrade_swap_time">Estimated swap time</string>
