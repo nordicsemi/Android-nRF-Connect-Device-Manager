@@ -349,7 +349,6 @@ class Validate extends FirmwareUpgradeTask {
 							case CONFIRM_ONLY: {
 								// If the firmware is not confirmed yet, confirm t.
 								if (!permanent && !confirmed) {
-									Log.i("Validate", "Adding Confirm task to " + imageIndex);
 									performer.enqueue(new Confirm(imageIndex, mcuMgrImage.getHash()));
 									permanent = true;
 								}
