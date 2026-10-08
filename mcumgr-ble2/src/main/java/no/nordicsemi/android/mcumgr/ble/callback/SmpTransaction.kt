@@ -9,12 +9,7 @@ import java.util.concurrent.TimeoutException
  */
 class TransactionTimeoutException internal constructor(
     val id: Int
-) : TimeoutException("Transaction $id timed out without receiving a response") {
-
-    override fun toString(): String {
-        return message!!
-    }
-}
+) : TimeoutException("Transaction $id timed out without receiving a response")
 
 /**
  * Thrown when a request reused a sequence number that was still awaiting a response, which means
@@ -24,12 +19,7 @@ class TransactionTimeoutException internal constructor(
  */
 class TransactionOverwriteException internal constructor(
     val id: Int
-) : Exception("Transaction $id has been overwritten") {
-
-    override fun toString(): String {
-        return message!!
-    }
-}
+) : Exception("Transaction $id has been overwritten")
 
 /**
  * A single SMP request and its response, matched by the sequence number in the SMP header.
