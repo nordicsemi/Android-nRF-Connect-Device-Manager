@@ -279,7 +279,7 @@ internal class SmpProfile @JvmOverloads constructor(
                 // Fail every request that is still awaiting a response.
                 session.close(McuMgrDisconnectedException())
                 if (wasOpen) {
-                    transportLog?.info { "SMP service closed" }
+                    transportLog?.info { "SMP Service stopped" }
                 }
             }
         }
