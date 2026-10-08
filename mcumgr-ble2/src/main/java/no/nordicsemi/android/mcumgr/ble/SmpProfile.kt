@@ -370,17 +370,18 @@ internal class SmpProfile @JvmOverloads constructor(
             return@suspendCancellableCoroutine
         }
 
-        transportLog?.info {
-            val headerAsString = McuMgrHeader.fromBytes(payload)
-            try {
-                "Sending (${payload.size} bytes) $headerAsString CBOR ${CBOR.toString(payload, McuMgrHeader.HEADER_LENGTH)}"
-            } catch (e: Exception) {
-                "Sending (${payload.size} bytes) $headerAsString CBOR invalid"
-            }
-        }
-
         service.session.send(payload, timeout, object : SmpTransaction {
             override suspend fun send(data: ByteArray) {
+                // Note: Here the 'data' has correct SEQ. The 'payload` does not, it's always 0.
+                transportLog?.info {
+                    val headerAsString = McuMgrHeader.fromBytes(data)
+                    try {
+                        "Sending (${data.size} bytes) $headerAsString CBOR ${CBOR.toString(data, McuMgrHeader.HEADER_LENGTH)}"
+                    } catch (e: Exception) {
+                        "Sending (${data.size} bytes) $headerAsString CBOR invalid"
+                    }
+                }
+
                 try {
                     // A single write cannot be longer than ATT MTU - 3 bytes, so longer packets
                     // are split here and reassembled by the device. Note, that write() trims
