@@ -191,15 +191,23 @@ class McuMgrBleTransport @JvmOverloads constructor(
      */
     @JvmOverloads
     fun requestConnectionPriority(priority: ConnectionPriority = ConnectionPriority.HIGH) {
-        scope.launch {
-            try {
-                val _ = target.requestConnectionPriority(priority)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                LOG.warn(e) { "Failed to request $priority connection priority" }
+        connect(object : McuMgrTransport.ConnectionCallback {
+            override fun onConnected() {
+                scope.launch {
+                    try {
+                        target.requestConnectionPriority(priority)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        LOG.warn { "Failed to request $priority connection priority: ${e.message}" }
+                    }
+                }
             }
-        }
+            override fun onDeferred() {}
+            override fun onError(t: Throwable) {
+                LOG.warn { "Failed to request $priority connection priority: ${t.message}" }
+            }
+        })
     }
 
     //*******************************************************************************************
