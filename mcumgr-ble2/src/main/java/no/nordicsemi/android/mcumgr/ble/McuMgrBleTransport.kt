@@ -203,7 +203,6 @@ class McuMgrBleTransport @JvmOverloads constructor(
                     }
                 }
             }
-            override fun onDeferred() {}
             override fun onError(t: Throwable) {
                 LOG.warn { "Failed to request $priority connection priority: ${t.message}" }
             }
