@@ -152,6 +152,11 @@ abstract class Uploader(
                         // Success, update the progress.
                         if (chunk.offset == 0 && response.off == chunk.data.size) {
                             _progress.tryEmit(UploadProgress(0, data.size, initialTimestamp))
+                            // The upload has (re)started from the beginning, e.g. after the device
+                            // rebooted and lost the data it had received. Forget the offset
+                            // reached so far, otherwise no progress would be reported until the
+                            // old offset is exceeded.
+                            currentOffset = 0
                         }
                         if (currentOffset < response.off) {
                             _progress.tryEmit(UploadProgress(response.off, data.size))
