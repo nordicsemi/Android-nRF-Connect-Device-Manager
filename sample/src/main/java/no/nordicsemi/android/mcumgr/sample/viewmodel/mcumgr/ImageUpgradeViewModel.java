@@ -116,6 +116,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     private final static int NOT_STARTED = -1;
     /** If no upload progress was reported for this long, the upload is considered restarted (e.g. after a reset). */
     private final static long RESTART_TIMEOUT = 3000L; /* ms */
+	/** How long to wait for the legacy device information to be read, in milliseconds. */
+	private final static long LEGACY_DEVICE_INFO_TIMEOUT = 10_000L;
 	/** How often the throughput data should be sent to the graph. */
 	private final static long REFRESH_RATE = 100L; /* ms */
 
@@ -329,27 +331,30 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 // If there's no Memfault group, read the same data from Device Information
                 // Service (DIS). This is legacy mode. It will be removed in the future.
                 if (t instanceof McuMgrException) {
-                    final DeviceInfo deviceInfo = legacyDeviceInfo.getDeviceInfo().getValue();
-                    final String projectKey = legacyDeviceInfo.getProjectKey().getValue();
-                    if (deviceInfo == null || projectKey == null) {
-                        postReady();
-                        otaNotSupportedEvent.post();
-                        return;
-                    }
-
-                    otaManager.getLatestRelease(deviceInfo, projectKey, new ReleaseCallback() {
-                        @Override
-                        public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
+                    // The device information is read when the services are discovered, which may
+                    // not have finished yet if the device has just been connected for the request
+                    // above, so wait for it before concluding that it's not available.
+                    legacyDeviceInfo.awaitInfo(scope, LEGACY_DEVICE_INFO_TIMEOUT, (deviceInfo, projectKey) -> {
+                        if (deviceInfo == null || projectKey == null) {
                             postReady();
-                            otaReadyEvent.postValue(releaseInformation);
+                            otaNotSupportedEvent.post();
+                            return;
                         }
 
-                        @Override
-                        public void onError(final @NotNull Throwable t) {
-                            logError(t);
-                            postReady();
-                            networkErrorEvent.postValue(t);
-                        }
+                        otaManager.getLatestRelease(deviceInfo, projectKey, new ReleaseCallback() {
+                            @Override
+                            public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
+                                postReady();
+                                otaReadyEvent.postValue(releaseInformation);
+                            }
+
+                            @Override
+                            public void onError(final @NotNull Throwable t) {
+                                logError(t);
+                                postReady();
+                                networkErrorEvent.postValue(t);
+                            }
+                        });
                     });
                 } else {
                     postReady();
