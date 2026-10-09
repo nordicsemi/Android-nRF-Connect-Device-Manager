@@ -57,6 +57,8 @@ public class ScannerFragment extends Fragment implements Injectable, DevicesAdap
 
     private ScannerViewModel scannerViewModel;
     private FragmentScannerBinding binding;
+    /** Set between onStart and onStop. The fragment's lifecycle state is not updated yet in onStart. */
+    private boolean started;
 
     @Nullable
     @Override
@@ -106,7 +108,11 @@ public class ScannerFragment extends Fragment implements Injectable, DevicesAdap
 
         // Configure views
         binding.refreshLayout.setOnRefreshListener(() -> {
+            // Restart the scan, as Android may have downgraded a long-running scan to an
+            // opportunistic one, which gives no results on its own.
+            stopScan();
             scannerViewModel.clear();
+            startScan();
             binding.refreshLayout.setRefreshing(false);
         });
         binding.noDevices.actionEnableLocation.setOnClickListener(v -> openLocationSettings());
@@ -169,16 +175,37 @@ public class ScannerFragment extends Fragment implements Injectable, DevicesAdap
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
     }
 
+    // The scan is started in onStart and stopped in onStop, not in onResume and onPause.
+    // Stopping the scan posts a new scanner state, which, when delivered while the view is still
+    // started (that is between onPause and onStop), would be handled by the observer, restarting
+    // the scan right after it was stopped. Also, when another activity is started, onStop is
+    // called only after it is shown, so the scan would be left on for the whole time.
     @Override
-    public void onResume() {
-        super.onResume();
+    public void onStart() {
+        super.onStart();
+        started = true;
         startScan();
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
+    public void onStop() {
+        super.onStop();
+        started = false;
         stopScan();
+    }
+
+    /**
+     * The scanner fragment is hidden when the Saved tab is selected, which does not change its
+     * lifecycle. The scan is not needed then.
+     */
+    @Override
+    public void onHiddenChanged(final boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (hidden) {
+            stopScan();
+        } else {
+            startScan();
+        }
     }
 
     @Override
@@ -192,6 +219,11 @@ public class ScannerFragment extends Fragment implements Injectable, DevicesAdap
      * Start scanning for Bluetooth devices or displays a message based on the scanner state.
      */
     private void startScan(final ScannerStateLiveData state) {
+        // Do not scan when the screen is not visible. This may be called by the observer with
+        // a state posted before the scan was stopped.
+        if (!started || isHidden()) {
+            return;
+        }
         final Context context = requireContext();
         // First, check the Location permission.
         // This is required since Marshmallow up until Android 11 in order to scan for Bluetooth LE
@@ -260,14 +292,18 @@ public class ScannerFragment extends Fragment implements Injectable, DevicesAdap
      * Starts scanning for Bluetooth LE devices.
      */
     private void startScan() {
-        startScan(scannerViewModel.getScannerState());
+        if (scannerViewModel != null && binding != null) {
+            startScan(scannerViewModel.getScannerState());
+        }
     }
 
     /**
      * Stops scanning for Bluetooth LE devices.
      */
     private void stopScan() {
-        scannerViewModel.stopScan();
+        if (scannerViewModel != null) {
+            scannerViewModel.stopScan();
+        }
     }
 
     /**
