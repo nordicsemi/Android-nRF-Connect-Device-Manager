@@ -52,15 +52,6 @@ public interface McuMgrTransport {
         void onConnected();
 
         /**
-         * Called when the transporter has decided not to connect to the transporter at this time.
-         * <p>
-         * This method is useful for transporters who do not wish to allow the caller of
-         * {@link #connect} to manage the connection or would rather wait to connect until
-         * necessary.
-         */
-        void onDeferred();
-
-        /**
          * Called when the connection attempt has failed.
          *
          * @param t The connection failure reason.
