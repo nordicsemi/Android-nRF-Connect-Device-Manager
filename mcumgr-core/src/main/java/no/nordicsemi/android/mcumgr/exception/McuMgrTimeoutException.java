@@ -13,9 +13,10 @@ package no.nordicsemi.android.mcumgr.exception;
 public class McuMgrTimeoutException extends McuMgrException {
 
 	public McuMgrTimeoutException() {
+		super("Timeout");
 	}
 
 	public McuMgrTimeoutException(Throwable cause) {
-		super(cause);
+		super("Timeout", cause);
 	}
 }

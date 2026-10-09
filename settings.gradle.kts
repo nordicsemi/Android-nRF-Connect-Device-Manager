@@ -70,7 +70,7 @@ dependencyResolutionManagement {
         // Use Nordic Gradle Version Catalog with common external libraries versions.
         // Link: https://github.com/nordicsemi/Nordic-Gradle-Plugins
         create("libs") {
-            from("no.nordicsemi.gradle:version-catalog-min-sdk-21:3.3-1")
+            from("no.nordicsemi.gradle:version-catalog-min-sdk-21:3.3-2")
         }
         // Fixed versions for Nordic libraries.
         create("nordic") {
@@ -88,6 +88,7 @@ rootProject.name = "nRF Connect Device Manager"
 
 include(":mcumgr-core")
 include(":mcumgr-ble")
+include(":mcumgr-ble2")
 include(":observability")
 include(":ota")
 include(":sample")

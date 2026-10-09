@@ -37,7 +37,7 @@ kotlin {
 
 dependencies {
     // Mcu Mgr
-    implementation(project(":mcumgr-ble"))
+    implementation(project(":mcumgr-ble2"))
 
     // Use nRF Cloud Observability feature with native BLE client.
     implementation(project(":observability"))

@@ -6,9 +6,8 @@
 
 package no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr;
 
-import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -24,10 +23,8 @@ import java.net.URI;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import no.nordicsemi.android.ble.ConnectionPriorityRequest;
 import no.nordicsemi.android.mcumgr.McuMgrErrorCode;
 import no.nordicsemi.android.mcumgr.McuMgrTransport;
-import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
 import no.nordicsemi.android.mcumgr.dfu.FirmwareUpgradeCallback;
 import no.nordicsemi.android.mcumgr.dfu.FirmwareUpgradeController;
 import no.nordicsemi.android.mcumgr.dfu.FirmwareUpgradeSettings;
@@ -38,8 +35,12 @@ import no.nordicsemi.android.mcumgr.dfu.suit.model.CacheImageSet;
 import no.nordicsemi.android.mcumgr.exception.McuMgrErrorException;
 import no.nordicsemi.android.mcumgr.exception.McuMgrException;
 import no.nordicsemi.android.mcumgr.image.SUITImage;
-import no.nordicsemi.android.mcumgr.sample.observable.ConnectionParameters;
-import no.nordicsemi.android.mcumgr.sample.observable.ObservableMcuMgrBleTransport;
+import no.nordicsemi.android.mcumgr.ble.McuMgrBleTransport;
+import no.nordicsemi.android.mcumgr.sample.log.LogController;
+import no.nordicsemi.android.mcumgr.sample.graph.ThroughputParameters;
+import no.nordicsemi.android.mcumgr.sample.profile.LegacyDeviceInfoProfile;
+import no.nordicsemi.kotlin.ble.client.android.ConnectionPriority;
+import kotlinx.coroutines.CoroutineScope;
 import no.nordicsemi.android.mcumgr.sample.utils.ZipPackage;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.SingleLiveEvent;
 import no.nordicsemi.android.ota.DeviceInfo;
@@ -76,15 +77,20 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     public static class ThroughputData {
         public int progress;
         public float averageThroughput;
+        /** True if this is the first point of a new upload (a next image, or a resumed upload). */
+        public boolean newSeries;
 
-        public ThroughputData(final int progress, final float averageThroughput) {
+        public ThroughputData(final int progress, final float averageThroughput, final boolean newSeries) {
             this.progress = progress;
             this.averageThroughput = averageThroughput;
+            this.newSeries = newSeries;
         }
     }
 
-    @Nullable
-    private final McuMgrBleTransport bleTransport;
+    private final McuMgrTransport transport;
+    private final LogController logging;
+    private final LegacyDeviceInfoProfile legacyDeviceInfo;
+    private final CoroutineScope scope;
     @NonNull
     private final FirmwareUpgradeManager manager;
     @NonNull
@@ -104,8 +110,12 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
 
     private long uploadStartTimestamp;
 	private int imageSize, bytesSent, bytesSentSinceUploadStated, lastProgress;
+    private long lastProgressTimestamp;
+    private boolean newSeriesPending;
     /** A value indicating that the upload has not been started before. */
     private final static int NOT_STARTED = -1;
+    /** If no upload progress was reported for this long, the upload is considered restarted (e.g. after a reset). */
+    private final static long RESTART_TIMEOUT = 3000L; /* ms */
 	/** How often the throughput data should be sent to the graph. */
 	private final static long REFRESH_RATE = 100L; /* ms */
 
@@ -113,14 +123,15 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     ImageUpgradeViewModel(@NonNull final McuMgrTransport transporter,
                           @NonNull final FirmwareUpgradeManager manager,
                           @NonNull final SUITUpgradeManager suitManager,
-                          @NonNull final HandlerThread thread,
+                          @NonNull final LogController logging,
+                          @NonNull final LegacyDeviceInfoProfile legacyDeviceInfo,
+                          @NonNull final CoroutineScope scope,
                           @NonNull @Named("busy") final MutableLiveData<Boolean> state) {
         super(state);
-        if (transporter instanceof McuMgrBleTransport bleTransporter) {
-            this.bleTransport = bleTransporter;
-        } else {
-            this.bleTransport = null;
-        }
+        this.transport = transporter;
+        this.logging = logging;
+        this.legacyDeviceInfo = legacyDeviceInfo;
+        this.scope = scope;
         this.manager = manager;
         this.manager.setFirmwareUpgradeCallback(new FirmwareUpgradeCallback<>() {
 
@@ -139,17 +150,17 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                     case UPLOAD -> {
                         Timber.i("Uploading firmware...");
                         bytesSentSinceUploadStated = NOT_STARTED;
-                        stateLiveData.postValue(State.UPLOADING);
+                        postState(State.UPLOADING, manager.isPaused());
                     }
                     case TEST -> {
                         handler.removeCallbacks(graphUpdater);
-                        stateLiveData.postValue(State.TESTING);
+                        postState(State.TESTING, manager.isPaused());
                     }
                     case CONFIRM -> {
                         handler.removeCallbacks(graphUpdater);
-                        stateLiveData.postValue(State.CONFIRMING);
+                        postState(State.CONFIRMING, manager.isPaused());
                     }
-                    case RESET -> stateLiveData.postValue(State.RESETTING);
+                    case RESET -> postState(State.RESETTING, manager.isPaused());
                 }
             }
 
@@ -188,17 +199,17 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 switch (newState) {
                     case PROCESSING -> {
                         handler.removeCallbacks(graphUpdater);
-                        stateLiveData.postValue(State.PROCESSING);
+                        postState(State.PROCESSING, suitManager.isPaused());
                     }
                     case UPLOADING_ENVELOPE -> {
                         Timber.i("Uploading envelope...");
                         bytesSentSinceUploadStated = NOT_STARTED;
-                        stateLiveData.postValue(State.UPLOADING);
+                        postState(State.UPLOADING, suitManager.isPaused());
                     }
                     case UPLOADING_RESOURCE -> {
                         Timber.i("Uploading resource...");
                         bytesSentSinceUploadStated = NOT_STARTED;
-                        stateLiveData.postValue(State.UPLOADING);
+                        postState(State.UPLOADING, suitManager.isPaused());
                     }
                 }
             }
@@ -228,7 +239,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 ImageUpgradeViewModel.this.onUpgradeFailed(error);
             }
         });
-        this.handler = new Handler(thread.getLooper());
+        // The handler only drives the progress refresh, so the main looper is enough.
+        this.handler = new Handler(Looper.getMainLooper());
 
         stateLiveData.setValue(State.IDLE);
         progressLiveData.setValue(null);
@@ -264,13 +276,13 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
         return progressLiveData;
     }
 
+    /**
+     * The parameters of the link shown on the throughput graph, or null when the transport is
+     * not a Bluetooth LE one and has no link to report on.
+     */
     @Nullable
-    public LiveData<ConnectionParameters> getConnectionParameters() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            bleTransport instanceof ObservableMcuMgrBleTransport ot) {
-            return ot.getConnectionParameters();
-        }
-        return null;
+    public LiveData<ThroughputParameters> getConnectionParameters() {
+        return ThroughputParameters.observe(transport, scope);
     }
 
     @NonNull
@@ -299,14 +311,33 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     }
 
     public void checkForUpdate() {
-        if (bleTransport instanceof ObservableMcuMgrBleTransport ot) {
-            setBusy();
-            ot.connect(new McuMgrTransport.ConnectionCallback() {
-                @Override
-                public void onConnected() {
-                    // First, try getting device info by reading from Memfault group.
-                    final OtaManager otaManager = new OtaManager();
-                    otaManager.getLatestRelease(ot, new ReleaseCallback() {
+        setBusy();
+        final OtaManager otaManager = new OtaManager();
+
+        // First, try getting the device info by reading from the Memfault group.
+        otaManager.getLatestRelease(transport, new ReleaseCallback() {
+            @Override
+            public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
+                postReady();
+                otaReadyEvent.postValue(releaseInformation);
+            }
+
+            @Override
+            public void onError(final @NotNull Throwable t) {
+                logError(t);
+
+                // If there's no Memfault group, read the same data from Device Information
+                // Service (DIS). This is legacy mode. It will be removed in the future.
+                if (t instanceof McuMgrException) {
+                    final DeviceInfo deviceInfo = legacyDeviceInfo.getDeviceInfo().getValue();
+                    final String projectKey = legacyDeviceInfo.getProjectKey().getValue();
+                    if (deviceInfo == null || projectKey == null) {
+                        postReady();
+                        otaNotSupportedEvent.post();
+                        return;
+                    }
+
+                    otaManager.getLatestRelease(deviceInfo, projectKey, new ReleaseCallback() {
                         @Override
                         public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
                             postReady();
@@ -316,58 +347,16 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                         @Override
                         public void onError(final @NotNull Throwable t) {
                             logError(t);
-
-                            // If there's no Memfault group, read the same data from Device Information Service (DIS).
-                            // This is legacy mode. It will be removed in the future with the following:
-                            if (t instanceof McuMgrException) {
-                                final DeviceInfo deviceInfo = ot.getDeviceInfo();
-                                final String projectKey = ot.getProjectKey();
-                                if (deviceInfo == null || projectKey == null) {
-                                    postReady();
-                                    otaNotSupportedEvent.post();
-                                    return;
-                                }
-
-                                otaManager.getLatestRelease(deviceInfo, projectKey, new ReleaseCallback() {
-                                    @Override
-                                    public void onSuccess(final @NotNull ReleaseInformation releaseInformation) {
-                                        postReady();
-                                        otaReadyEvent.postValue(releaseInformation);
-                                    }
-
-                                    @Override
-                                    public void onError(final @NotNull Throwable t) {
-                                        logError(t);
-                                        postReady();
-                                        networkErrorEvent.postValue(t);
-                                    }
-                                });
-                            } else {
-                                postReady();
-                                networkErrorEvent.postValue(t);
-                            }
+                            postReady();
+                            networkErrorEvent.postValue(t);
                         }
                     });
-                }
-
-                @Override
-                public void onDeferred() {
-                    // This is never called with BLE transport.
-                }
-
-                @Override
-                public void onError(final @NotNull Throwable t) {
+                } else {
                     postReady();
-                    if (t instanceof McuMgrException e) {
-                        errorLiveData.postValue(e);
-                    } else {
-                        errorLiveData.postValue(new McuMgrException(t));
-                    }
+                    networkErrorEvent.postValue(t);
                 }
-            });
-        } else {
-            otaNotSupportedEvent.post();
-        }
+            }
+        });
     }
 
     public void upgrade(@NonNull final byte[] data,
@@ -522,19 +511,47 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     public void pause() {
         if (manager.isInProgress() || suitManager.isInProgress()) {
             handler.removeCallbacks(graphUpdater);
-            stateLiveData.postValue(State.PAUSED);
             manager.pause();
             suitManager.pause();
+            stateLiveData.postValue(State.PAUSED);
             Timber.i("Upload paused");
             setLoggingEnabled(true);
             setReady();
         }
     }
 
+    /**
+     * Posts the given state, or {@link State#PAUSED} if the upgrade is paused. The next task
+     * is announced even if the upgrade got paused before it was started, and it must not
+     * hide the Resume button.
+     */
+    private void postState(final State state, final boolean paused) {
+        stateLiveData.postValue(paused ? State.PAUSED : state);
+    }
+
+    /** Returns the state matching the task the paused upgrade is going to continue with. */
+    private State currentState() {
+        if (suitManager.isPaused()) {
+            return switch (suitManager.getState()) {
+                case PROCESSING -> State.PROCESSING;
+                default -> State.UPLOADING;
+            };
+        }
+        return switch (manager.getState()) {
+            case VALIDATE -> State.VALIDATING;
+            case TEST -> State.TESTING;
+            case CONFIRM -> State.CONFIRMING;
+            case RESET -> State.RESETTING;
+            default -> State.UPLOADING;
+        };
+    }
+
     public void resume() {
         if (manager.isPaused() || suitManager.isPaused()) {
             setBusy();
-            stateLiveData.postValue(State.UPLOADING);
+            // The upgrade may have been paused after the upload finished, when the next task has
+            // been already announced but not started, so go back to the state it is actually in.
+            stateLiveData.postValue(currentState());
             Timber.i("Upload resumed");
             bytesSentSinceUploadStated = NOT_STARTED;
             setLoggingEnabled(false);
@@ -569,7 +586,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
                 final float timeSinceUploadStarted = timestamp - uploadStartTimestamp;
                 final float averageThroughput = bytesSentSinceUploadStarted / timeSinceUploadStarted; // bytes / ms = KB/s
 
-                progressLiveData.postValue(new ThroughputData(progress, averageThroughput));
+                progressLiveData.postValue(new ThroughputData(progress, averageThroughput, newSeriesPending));
+                newSeriesPending = false;
             }
 
             if (stateLiveData.getValue() == State.UPLOADING) {
@@ -585,10 +603,20 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     }
 
     private void onUploadProgressChanged(final int bytesSent, final int imageSize, final long timestamp) {
+        final int previousBytesSent = ImageUpgradeViewModel.this.bytesSent;
         ImageUpgradeViewModel.this.imageSize = imageSize;
         ImageUpgradeViewModel.this.bytesSent = bytesSent;
 
         final long uptimeMillis = SystemClock.uptimeMillis();
+
+        // The upload may have been restarted without any state change, e.g. after the device was
+        // reset and the upload resumed from the offset reported by the device. In that case the
+        // throughput must be measured from scratch.
+        if (bytesSentSinceUploadStated != NOT_STARTED
+                && (bytesSent < previousBytesSent || uptimeMillis - lastProgressTimestamp > RESTART_TIMEOUT)) {
+            bytesSentSinceUploadStated = NOT_STARTED;
+        }
+        lastProgressTimestamp = uptimeMillis;
 
         // Check if this is the first time this method is called since:
         // - the start of an upload
@@ -596,8 +624,8 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
         if (bytesSentSinceUploadStated == NOT_STARTED) {
             lastProgress = NOT_STARTED;
 
-            // If a new image started being sending, clear the progress graph.
-            progressLiveData.postValue(null);
+            // Start a new series on the graph. The previous ones are kept, dimmed.
+            newSeriesPending = true;
 
             // To calculate the throughput it is necessary to store the initial timestamp and
             // the number of bytes sent so far. Mind, that the upload may be resumed from any point,
@@ -659,15 +687,13 @@ public class ImageUpgradeViewModel extends McuMgrViewModel {
     }
 
     private void requestHighConnectionPriority() {
-        if (bleTransport != null) {
-            bleTransport.requestConnPriority(ConnectionPriorityRequest.CONNECTION_PRIORITY_HIGH);
+        if (transport instanceof McuMgrBleTransport ble) {
+            ble.requestConnectionPriority(ConnectionPriority.HIGH);
         }
     }
 
     private void setLoggingEnabled(final boolean enabled) {
-        if (bleTransport != null) {
-            bleTransport.setLoggingEnabled(enabled);
-        }
+        logging.setVerbose(enabled);
     }
 
     private void logError(final @NotNull Throwable throwable) {

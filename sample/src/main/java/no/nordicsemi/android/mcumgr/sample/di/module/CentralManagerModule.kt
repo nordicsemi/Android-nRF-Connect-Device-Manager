@@ -13,29 +13,28 @@ import no.nordicsemi.kotlin.ble.client.android.native
 import no.nordicsemi.kotlin.ble.core.android.AndroidEnvironment
 import no.nordicsemi.kotlin.ble.environment.android.NativeAndroidEnvironment
 import no.nordicsemi.kotlin.log.Log
-import no.nordicsemi.kotlin.log.timber.Timber
 
 @Module
 class CentralManagerModule {
 
     @Provides
     @McuMgrScope
-    fun providesIoScope(): CoroutineScope {
-        return CoroutineScope(Dispatchers.IO + SupervisorJob())
-    }
+    fun providesIoScope(): CoroutineScope =
+        CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Provides
     @McuMgrScope
-    fun providesEnvironment(context: Context): NativeAndroidEnvironment {
-        return NativeAndroidEnvironment.getInstance(context, isNeverForLocationFlagSet = true)
-    }
+    fun providesEnvironment(context: Context): NativeAndroidEnvironment =
+        NativeAndroidEnvironment.getInstance(context, isNeverForLocationFlagSet = true)
 
     @Provides
     @McuMgrScope
-    fun providesCentralManager(environment: NativeAndroidEnvironment, scope: CoroutineScope): CentralManager {
-        return CentralManager.native(environment, scope)
-            .also { it.logger = Log.Sink.Timber { _, _ -> true } }
-    }
+    fun providesCentralManager(
+        environment: NativeAndroidEnvironment,
+        scope: CoroutineScope,
+        logger: @JvmSuppressWildcards Log.Sink<Log.Category>,
+    ): CentralManager = CentralManager.native(environment, scope)
+        .also { it.logger = logger }
 }
 
 @Module

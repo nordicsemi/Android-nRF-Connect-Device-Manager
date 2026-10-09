@@ -416,7 +416,7 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
                     }
 
                     // Ensure the MTU is sufficient. Packets longer than MTU, but shorter
-                    // then few MTU lengths can be split automatically.
+                    // than few MTU lengths can be split automatically.
                     if (mMaxPacketLength < payload.length) {
                         callback.onError(new InsufficientMtuException(payload.length, mMaxPacketLength));
                         return;
@@ -437,10 +437,10 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
                                 }
                             }
 
-                            // As the write is done without response, it will finish successfully
+                            // As the 'write' is done without response, it will finish successfully
                             // even if the device is unreachable. There is no need to catch any
                             // failures. In the device gets disconnected, the SMP protocol
-                            // session will be closed and all requests will be cancelled.
+                            // session will be closed and all requests will be canceled.
 
                             // Note: waitForNotification is not uses, as the library supports
                             //       asynchronous writes, that is can send multiple requests

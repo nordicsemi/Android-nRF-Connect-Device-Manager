@@ -8,13 +8,20 @@ package no.nordicsemi.android.mcumgr.sample.di.module
 
 import dagger.Module
 import dagger.Provides
-import no.nordicsemi.android.mcumgr.log.Category
-import no.nordicsemi.android.mcumgr.sample.di.McuMgrScope
+import no.nordicsemi.android.mcumgr.sample.log.LogController
 import no.nordicsemi.kotlin.log.Log
 import no.nordicsemi.kotlin.log.timber.Timber
+import javax.inject.Singleton
 
 @Module
 class McuMgrLoggerModule {
+
+    /**
+     * The switch the view models use to quieten the Bluetooth LE stack during a transfer.
+     */
+    @Provides
+    @Singleton
+    fun providesLogController(): LogController = LogController()
 
     /**
      * The sink receiving log entries from the Mcu Manager library, that is from the managers,
@@ -24,6 +31,10 @@ class McuMgrLoggerModule {
      * a log session is given, to the nRF Logger.
      */
     @Provides
-    @McuMgrScope
-    fun providesMcuMgrLogger(): Log.Sink<Category> = Log.Sink.Timber { _, _ -> true }
+    @Singleton
+    fun providesMcuMgrLogger(
+        logController: LogController,
+    ): Log.Sink<Log.Category> = Log.Sink.Timber { _, level ->
+        logController.isLoggable(level)
+    }
 }

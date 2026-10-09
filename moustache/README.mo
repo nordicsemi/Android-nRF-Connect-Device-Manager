@@ -6,7 +6,9 @@ nRF Connect Device Manager library is compatible with Mcu Manager, a management 
 by nRF Connect SDK, Zephyr and Apache Mynewt.
 
 The library provides a transport agnostic implementation of the McuManager protocol.
-It contains a default implementation for BLE transport.
+It contains two implementations of the BLE transport: one based on the
+[Android-BLE-Library](https://github.com/nordicsemi/Android-BLE-Library) and one based on the
+[Kotlin-BLE-Library](https://github.com/nordicsemi/Kotlin-BLE-Library).
 
 > Minimum required Android version is 5.0 (Android Lollipop) due to a requirement for high MTU.
 
@@ -63,6 +65,37 @@ The core module will be included automatically.
 
 > Latest version targeting API 30 (Android 11) is 0.13.0-beta07.
 
+### McuManager BLE 2 (Kotlin BLE Library) - Experimental
+> [!Warning]
+> This module is experimental and available since version 3.5.0. Its API may change in future
+> releases, and it depends on a pre-release version of the Kotlin BLE Library.
+
+An alternative BLE transport implementation, using Nordic's
+[Kotlin-BLE-Library](https://github.com/nordicsemi/Kotlin-BLE-Library) (Kotlin coroutines and flows).
+It is intended for apps built on the Kotlin BLE Library, to ease integration, and for new apps:
+the transport uses the app's `CentralManager`, and the `Peripheral` can be used for other purposes at
+the same time, for example by the [Observability](#observability) module.
+
+```groovy
+implementation 'no.nordicsemi.android:mcumgr-ble2:{{VERSION}}'
+```
+
+The core module will be included automatically.
+
+> [!Important]
+> `mcumgr-ble2` declares the same classes in the same package as `mcumgr-ble`, so only one of them
+> can be added to an app. Their APIs do not match (for example, the transport is created from
+> a `CentralManager` and a `Peripheral` instead of a `Context` and a `BluetoothDevice`), so switching
+> an existing app requires code changes. The original `mcumgr-ble` is still supported, and apps
+> using it do not need to migrate.
+
+```kotlin
+val peripheral = centralManager.getPeripheralById(address)!!
+val transport = McuMgrBleTransport(centralManager, peripheral, scope)
+```
+
+See the [module documentation](mcumgr-ble2/Module.md) for details.
+
 ### McuManager Core
 Core dependency only. Use if you want to provide your own transport implementation.
 
@@ -117,6 +150,7 @@ As the manager moves through the firmware upgrade process, state changes are pro
 ### Example
 ```java
 // Initialize the BLE transporter with context and a BluetoothDevice
+// (with `mcumgr-ble2`, use `new McuMgrBleTransport(centralManager, peripheral, scope)` instead).
 McuMgrTransport transport = new McuMgrBleTransport(context, bluetoothDevice);
 
 // Initialize the Firmware Upgrade Manager.
@@ -193,7 +227,10 @@ This module allows devices to upload binary "chunks" of data (e.g., logs, core d
 nRF Cloud via the mobile app using Bluetooth LE as transport protocol.
 
 `ObservabilityManager` is decoupled from the underlying Bluetooth LE connection via the
-`ChunksEmitter` interface.
+`ChunksEmitter` interface. It works with both Mcu Manager transports. With `mcumgr-ble2` the same
+Kotlin BLE Library `Peripheral` can be shared: `observabilityManager.connect(peripheral)` attaches
+`MonitoringAndDiagnosticsProfile` to it, so the transport and the observability manager use one
+connection.
 
 ### Key Components
 
