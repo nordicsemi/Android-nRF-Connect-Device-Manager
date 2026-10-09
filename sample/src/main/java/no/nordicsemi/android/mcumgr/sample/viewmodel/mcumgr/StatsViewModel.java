@@ -12,27 +12,35 @@ import androidx.lifecycle.MutableLiveData;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
 import no.nordicsemi.android.mcumgr.McuMgrCallback;
 import no.nordicsemi.android.mcumgr.exception.McuMgrException;
+import no.nordicsemi.android.mcumgr.managers.DefaultManager;
 import no.nordicsemi.android.mcumgr.managers.StatsManager;
+import no.nordicsemi.android.mcumgr.response.dflt.McuMgrMpStatResponse;
 import no.nordicsemi.android.mcumgr.response.stat.McuMgrStatListResponse;
 import no.nordicsemi.android.mcumgr.response.stat.McuMgrStatResponse;
 
 public class StatsViewModel extends McuMgrViewModel {
     private final StatsManager manager;
+    private final DefaultManager osManager;
 
     private final MutableLiveData<List<McuMgrStatResponse>> responseLiveData = new MutableLiveData<>();
     private final MutableLiveData<McuMgrException> errorLiveData = new MutableLiveData<>();
+    private final MutableLiveData<Map<String, McuMgrMpStatResponse.MpStat>> memoryPoolsLiveData = new MutableLiveData<>();
+    private final MutableLiveData<McuMgrException> memoryPoolsErrorLiveData = new MutableLiveData<>();
 
     @Inject
     StatsViewModel(final StatsManager manager,
+                   final DefaultManager osManager,
                    @Named("busy") final MutableLiveData<Boolean> state) {
         super(state);
         this.manager = manager;
+        this.osManager = osManager;
     }
 
     public LiveData<List<McuMgrStatResponse>> getResponse() {
@@ -42,6 +50,35 @@ public class StatsViewModel extends McuMgrViewModel {
     @NonNull
     public LiveData<McuMgrException> getError() {
         return errorLiveData;
+    }
+
+    /** The memory pools, by name (or ID, if the device does not report names). */
+    @NonNull
+    public LiveData<Map<String, McuMgrMpStatResponse.MpStat>> getMemoryPools() {
+        return memoryPoolsLiveData;
+    }
+
+    @NonNull
+    public LiveData<McuMgrException> getMemoryPoolsError() {
+        return memoryPoolsErrorLiveData;
+    }
+
+    public void readMemoryPools() {
+        setBusy();
+        memoryPoolsErrorLiveData.setValue(null);
+        osManager.mpstat(new McuMgrCallback<>() {
+            @Override
+            public void onResponse(@NonNull final McuMgrMpStatResponse response) {
+                memoryPoolsLiveData.postValue(response.getMpools());
+                postReady();
+            }
+
+            @Override
+            public void onError(@NonNull final McuMgrException error) {
+                memoryPoolsErrorLiveData.postValue(error);
+                postReady();
+            }
+        });
     }
 
     public void readStats() {

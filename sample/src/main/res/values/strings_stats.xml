@@ -12,4 +12,10 @@
 
     <string name="stats_module">%s:</string>
     <string name="stats_field">• %s: %d</string>
+
+    <string name="mpools_title">Memory Pools</string>
+    <string name="mpools_hint">Tap REQUEST button to read memory pools.</string>
+    <string name="mpools_empty">The device reported no memory pools.</string>
+    <string name="mpools_block_size">• Block size: %d B</string>
+    <string name="mpools_blocks">• Blocks: %1$d (free: %2$d, min free: %3$d)</string>
 </resources>
