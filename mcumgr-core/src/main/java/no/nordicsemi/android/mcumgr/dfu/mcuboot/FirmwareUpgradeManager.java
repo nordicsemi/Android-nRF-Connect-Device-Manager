@@ -79,6 +79,9 @@ public class FirmwareUpgradeManager implements FirmwareUpgradeController {
         /**
          * When this flag is set, the manager will first send test followed by reset commands,
          * then it will reconnect to the new application and will send confirm command.
+         * Before confirming any image, it checks that each new image is running. If one isn't,
+         * for example because the device reverted to the previous one, the upgrade fails and no
+         * image is confirmed.
          * <p>
          * Use this mode when the new image supports SMP service and you want to test it
          * before confirming.
