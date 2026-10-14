@@ -296,6 +296,10 @@ class McuMgrBleTransport @JvmOverloads constructor(
         }
     }
 
+    suspend fun connect() {
+        ensureConnected().ready.await()
+    }
+
     /**
      * Returns the current connection, starting one if it is not running.
      */
