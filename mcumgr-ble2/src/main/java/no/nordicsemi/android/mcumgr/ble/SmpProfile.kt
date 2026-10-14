@@ -19,6 +19,7 @@ import no.nordicsemi.android.mcumgr.McuMgrHeader
 import no.nordicsemi.android.mcumgr.McuMgrScheme
 import no.nordicsemi.android.mcumgr.ble.callback.SmpProtocolSession
 import no.nordicsemi.android.mcumgr.ble.callback.SmpTransaction
+import no.nordicsemi.android.mcumgr.ble.callback.TransactionTimeoutException
 import no.nordicsemi.android.mcumgr.ble.exception.McuMgrDisconnectedException
 import no.nordicsemi.android.mcumgr.ble.exception.McuMgrNotSupportedException
 import no.nordicsemi.android.mcumgr.exception.InsufficientMtuException
@@ -40,6 +41,7 @@ import no.nordicsemi.kotlin.ble.core.util.mergeIndexed
 import no.nordicsemi.kotlin.log.Log
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * An implementation of the Simple Management Protocol (SMP) service.
@@ -110,18 +112,15 @@ internal class SmpProfile @JvmOverloads constructor(
      * @property peripheral The device the service belongs to.
      * @property characteristic The SMP characteristic, used to send the requests.
      * @property session The session matching the SMP responses to the requests.
-     * @property bufferSize The maximum length of an SMP packet the device can reassemble.
+     * @property bufferSize The maximum length of an SMP packet the device can accept: the size of
+     * its reassembly buffer, or of a single write if it reported none.
      */
     private class OpenService(
-        private val peripheral: Peripheral<*, *>,
+        val peripheral: Peripheral<*, *>,
         val characteristic: RemoteCharacteristic,
         val session: SmpProtocolSession,
         val bufferSize: Int,
-    ) {
-        /** The maximum number of bytes that can be written at once, that is *ATT MTU - 3*. */
-        val maxWriteLength: Int
-            get() = peripheral.maximumWriteValueLength(WriteType.WITHOUT_RESPONSE)
-    }
+    )
 
     /**
      * The bytes of [DefaultManager.params] command.
@@ -136,6 +135,11 @@ internal class SmpProfile @JvmOverloads constructor(
         0xA0.toByte(),  // Empty map(0) - an empty CBOR may be required for some implementations,
                         // otherwise the request is ignored and no notification is replied.
     )
+    /**
+     * How long to wait for the response to [readMcuMgrParams]. A device that does not support the
+     * command replies with an error right away, so waiting longer would not help.
+     */
+    private val mcuMgrParamsTimeout = 1.seconds
     /** The open SMP service, or null when it is not available. */
     private var openService: OpenService? = null
     /** The SMP characteristic, if the service has a usable one, see [prepare]. */
@@ -206,35 +210,6 @@ internal class SmpProfile @JvmOverloads constructor(
 
         try {
             val outcome = try {
-                // To initialize the SMP protocol we have to read the Mcu Manager params and enable
-                // notifications on the SMP characteristic. The Mcu Manager params contain the size
-                // of the reassembly buffer on the device side. With this information, the sender
-                // can use SAR to increase throughput. Long messages, like files or firmware images,
-                // can be split into long packets, so less time is used to send SMP headers. The longer
-                // packets, the better data-metadata ratio.
-                transportLog?.trace { "Obtaining Mcu Manager parameters..." }
-                val bufferSize = smpCharacteristic
-                    .waitForValueChange(
-                        merge = sar,
-                        trigger = {
-                            smpCharacteristic.write(readMcuMgrParams, WriteType.WITHOUT_RESPONSE)
-                        }
-                    )
-                    .let { bytes ->
-                        try {
-                            val response = McuMgrResponse.buildResponse(
-                                McuMgrScheme.BLE,
-                                bytes,
-                                McuMgrParamsResponse::class.java
-                            )
-                            transportLog?.info { "SMP reassembly supported with buffer size: ${response.bufSize} bytes, and count: ${response.bufCount}" }
-                            response.bufSize
-                        } catch (e: Exception) {
-                            transportLog?.warn { "Failed to parse Mcu Manager parameters response: ${e.message}" }
-                            peripheral.maximumWriteValueLength(WriteType.WITHOUT_RESPONSE)
-                        }
-                    }
-
                 transportLog?.trace { "Enabling SMP notifications..." }
                 val deferred = CompletableDeferred<Unit>()
                 smpCharacteristic
@@ -252,9 +227,16 @@ internal class SmpProfile @JvmOverloads constructor(
                     .onEach { session.receive(it) }
                     .launchIn(this)
 
-                // Make sure the notifications are enabled before reporting the service as open.
+                // Make sure the notifications are enabled before sending any request.
                 deferred.await()
 
+                // The Mcu Manager params contain the size of the reassembly buffer on the device
+                // side. With this information, the sender can use SAR to increase throughput.
+                // Long messages, like files or firmware images, can be split into long packets,
+                // so less time is used to send SMP headers. The longer packets, the better
+                // data-metadata ratio. Without it, each packet must fit in a single write.
+                val bufferSize = readReassemblyBufferSize(peripheral, session)
+                    ?: peripheral.maximumWriteValueLength(WriteType.WITHOUT_RESPONSE)
                 openService = OpenService(peripheral, smpCharacteristic, session, bufferSize)
                 transportLog?.info { "SMP service ready" }
                 Resolution.Open
@@ -339,6 +321,42 @@ internal class SmpProfile @JvmOverloads constructor(
     }
 
     /**
+     * Asks the device for the size of its reassembly buffer, with the Mcu Manager params command.
+     *
+     * Returns null if the device did not report one: it does not support the command (Zephyr's
+     * default), it replied with an error, or it did not reply in time.
+     */
+    private suspend fun readReassemblyBufferSize(
+        peripheral: Peripheral<*, *>,
+        session: SmpProtocolSession,
+    ): Int? {
+        transportLog?.trace { "Obtaining Mcu Manager parameters..." }
+        val response = try {
+            // The session sets the sequence number in the packet, so it gets a copy of the constant.
+            exchange(
+                peripheral, smpCharacteristic, session, readMcuMgrParams.copyOf(), mcuMgrParamsTimeout
+            ).await()
+        } catch (e: TransactionTimeoutException) {
+            transportLog?.warn { "Mcu Manager parameters not received, SMP reassembly disabled" }
+            return null
+        }
+        val params = try {
+            McuMgrResponse.buildResponse(McuMgrScheme.BLE, response, McuMgrParamsResponse::class.java)
+        } catch (e: Exception) {
+            transportLog?.warn { "Failed to parse Mcu Manager parameters response: ${e.message}" }
+            return null
+        }
+        val bufferSize = params.reassemblyBufferSize
+        if (bufferSize != null) {
+            transportLog?.info { "SMP reassembly supported with buffer size: $bufferSize bytes, and count: ${params.bufCount}" }
+        } else {
+            // The response, logged when received, tells why: an error, or no buffer size.
+            transportLog?.info { "Mcu Manager parameters have no buffer size, SMP reassembly disabled" }
+        }
+        return bufferSize
+    }
+
+    /**
      * Queues an SMP request and returns its response, which is matched to the request by its
      * sequence number.
      *
@@ -362,15 +380,30 @@ internal class SmpProfile @JvmOverloads constructor(
         timeout: Duration,
     ): Deferred<ByteArray> {
         val service = openService ?: throw McuMgrDisconnectedException()
-        // A packet longer than the reassembly buffer on the device side cannot be sent at all.
+        // A packet longer than the device can accept cannot be sent at all.
         if (payload.size > service.bufferSize) {
             throw InsufficientMtuException(payload.size, service.bufferSize)
         }
+        return exchange(service.peripheral, service.characteristic, service.session, payload, timeout)
+    }
 
+    /**
+     * Queues an SMP request in the given session, and returns its response.
+     *
+     * Unlike [send], this does not check that the service is open, or that the packet fits in the
+     * reassembly buffer, so it can be used while the service is being opened.
+     */
+    private fun exchange(
+        peripheral: Peripheral<*, *>,
+        characteristic: RemoteCharacteristic,
+        session: SmpProtocolSession,
+        payload: ByteArray,
+        timeout: Duration,
+    ): Deferred<ByteArray> {
         // The session may report a request more than once, for example a failed write and then
         // its timeout. A deferred keeps the first outcome and ignores the others.
         val response = CompletableDeferred<ByteArray>()
-        service.session.send(payload, timeout, object : SmpTransaction {
+        session.send(payload, timeout, object : SmpTransaction {
             override suspend fun send(data: ByteArray) {
                 // Note: Here the 'data' has correct SEQ. The 'payload` does not, it's always 0.
                 transportLog?.info {
@@ -387,15 +420,16 @@ internal class SmpProfile @JvmOverloads constructor(
                     // A single write cannot be longer than ATT MTU - 3 bytes, so longer packets
                     // are split here and reassembled by the device. Note, that write() trims
                     // the value instead of splitting it, hence the chunks.
-                    for (chunk in data.chunked(service.maxWriteLength)) {
-                        service.characteristic.write(chunk, WriteType.WITHOUT_RESPONSE)
+                    val maxWriteLength = peripheral.maximumWriteValueLength(WriteType.WITHOUT_RESPONSE)
+                    for (chunk in data.chunked(maxWriteLength)) {
+                        characteristic.write(chunk, WriteType.WITHOUT_RESPONSE)
                     }
                 } catch (e: Exception) {
                     // The request is still registered in the session, and would be failed again
                     // by its timeout. Take it out. If it is not there, it has completed already,
                     // e.g. it timed out while the write was blocked, and the deferred keeps
                     // the first outcome.
-                    withContext(NonCancellable) { service.session.cancel(transaction) }
+                    withContext(NonCancellable) { session.cancel(transaction) }
                     // This includes a CancellationException, when the session closes during
                     // the write. The caller awaiting the response gets it as well.
                     response.completeExceptionally(e)
@@ -422,3 +456,13 @@ internal class SmpProfile @JvmOverloads constructor(
         return response
     }
 }
+
+/**
+ * The size of the reassembly buffer reported by the device, or null if it reported none.
+ *
+ * A device without the Mcu Manager params command, for example a Zephyr device with
+ * `CONFIG_MCUMGR_GRP_OS_MCUMGR_PARAMS` disabled (the default), replies with an error like
+ * `{"rc": 8}`, and no buffer size.
+ */
+internal val McuMgrParamsResponse.reassemblyBufferSize: Int?
+    get() = bufSize.takeIf { isSuccess && it > 0 }
