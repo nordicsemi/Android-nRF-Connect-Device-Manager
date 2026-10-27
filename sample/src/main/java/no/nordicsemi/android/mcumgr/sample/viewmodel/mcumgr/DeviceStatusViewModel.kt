@@ -28,6 +28,7 @@ import no.nordicsemi.android.ota.mcumgr.MemfaultDeviceInfoResponse
 import no.nordicsemi.android.ota.mcumgr.MemfaultManager
 import no.nordicsemi.android.ota.mcumgr.MemfaultProjectKeyResponse
 import no.nordicsemi.kotlin.ble.client.android.BondState
+import no.nordicsemi.kotlin.ble.client.android.EncryptionState
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -59,6 +60,7 @@ class DeviceStatusViewModel @Inject internal constructor(
     val connectionState: LiveData<ConnectionState>
 
     private val bondStateLiveData = MutableLiveData<BondState>(BondState.None())
+    private val encryptionStateLiveData = MutableLiveData<EncryptionState?>(null)
     private val bufferLiveData = MutableLiveData<McuMgrBufferParams?>()
     private val bootloaderNameLiveData = MutableLiveData<String?>()
     private val bootloaderModeLiveData = MutableLiveData<Int?>()
@@ -140,9 +142,20 @@ class DeviceStatusViewModel @Inject internal constructor(
             .onEach { observabilityLiveData.postValue(it.state) }
             .launchIn(viewModelScope)
 
-        (transport as? McuMgrBleTransport)?.peripheral?.bondState
-            ?.onEach { bondStateLiveData.postValue(it) }
-            ?.launchIn(viewModelScope)
+        (transport as? McuMgrBleTransport)?.peripheral?.let { peripheral ->
+            peripheral.bondState
+                .onEach { bondStateLiveData.postValue(it) }
+                .launchIn(viewModelScope)
+
+            // The peripheral reports the encryption as unknown also when it is not connected,
+            // which is reported as null, so that the two can be told apart.
+            peripheral.state
+                .combine(peripheral.encryptionState) { state, encryption ->
+                    encryption.takeIf { state.isConnected }
+                }
+                .onEach { encryptionStateLiveData.postValue(it) }
+                .launchIn(viewModelScope)
+        }
     }
 
     override fun onCleared() {
@@ -152,6 +165,15 @@ class DeviceStatusViewModel @Inject internal constructor(
 
     val bondState: LiveData<BondState>
         get() = bondStateLiveData
+
+    /**
+     * The state of the encryption of the link, or null if the device is not connected.
+     *
+     * The encryption state is reported from Android 16 (API 36). On older versions it is always
+     * [EncryptionState.Unknown].
+     */
+    val encryptionState: LiveData<EncryptionState?>
+        get() = encryptionStateLiveData
 
     val bufferParams: LiveData<McuMgrBufferParams?>
         get() = bufferLiveData
