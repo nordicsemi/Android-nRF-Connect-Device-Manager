@@ -48,6 +48,7 @@ import no.nordicsemi.android.mcumgr.sample.fragment.LogsStatsFragment;
 import no.nordicsemi.android.mcumgr.sample.fragment.ShellFragment;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.McuMgrViewModelFactory;
 import no.nordicsemi.android.observability.ObservabilityManager;
+import no.nordicsemi.kotlin.ble.client.android.CentralManager;
 import no.nordicsemi.kotlin.ble.core.android.AndroidEnvironment;
 
 @SuppressWarnings("ConstantConditions")
@@ -63,6 +64,8 @@ public class MainActivity extends AppCompatActivity
     McuMgrTransport mcuMgrTransport;
     @Inject
     ObservabilityManager observabilityManager;
+    @Inject
+    CentralManager centralManager;
     @Inject
     AndroidEnvironment environment;
     @Inject
@@ -191,6 +194,14 @@ public class MainActivity extends AppCompatActivity
         if (isFinishing()) {
             mcuMgrTransport.release();
             observabilityManager.disconnect();
+            // The central manager registers broadcast receivers, which are removed only when it
+            // is closed. Without it every time the device was opened another one would stay
+            // registered, and, for example, log every bond and encryption change again.
+            try {
+                centralManager.close();
+            } catch (final Exception ignored) {
+                // Nothing to do, the activity is being destroyed anyway.
+            }
             environment.close();
             // The objects above belong to the Dagger2 subcomponent and are now unusable, so the
             // next time this device is opened the subcomponent has to be built anew.
