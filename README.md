@@ -105,6 +105,31 @@ implementation 'no.nordicsemi.android:mcumgr-core:3.4.1'
 
 > Latest version targeting API 30 (Android 11) is 0.13.0-beta07.
 
+### McuManager Core KTX
+Kotlin Coroutines and `Flow` API for `mcumgr-core`: single requests are `suspend` functions, while
+uploading and downloading images and files, and the firmware upgrade, report their state using
+a `Flow`. It works with any transport.
+
+```groovy
+implementation 'no.nordicsemi.android:mcumgr-core-ktx:3.4.1'
+```
+
+The core module will be included automatically.
+
+> [!Warning]
+> This module is experimental and available since version 3.5.0. Its API may change in future releases.
+
+```kotlin
+val fs = FsManagerKtx(transport)
+val stat = fs.status("/lfs/file.bin")  // suspending
+
+fs.upload("/lfs/file.bin", data).collect { state ->  // Flow<TransferState<Unit>>
+    if (state is TransferState.InProgress) println(state.progress)
+}
+```
+
+See the [module documentation](mcumgr-core-ktx/Module.md) for details.
+
 ### McuManager OTA
 Integration with nRF Cloud Over-the-Air (OTA) firmware update services.
 

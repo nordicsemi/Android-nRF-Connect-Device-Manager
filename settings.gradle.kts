@@ -87,6 +87,7 @@ dependencyResolutionManagement {
 rootProject.name = "nRF Connect Device Manager"
 
 include(":mcumgr-core")
+include(":mcumgr-core-ktx")
 include(":mcumgr-ble")
 include(":mcumgr-ble2")
 include(":observability")

@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) Runtime Inc., 2017-2018
+ * Copyright (c) Intellinium SAS, 2014-2021
+ * Copyright (c) Nordic Semiconductor ASA, 2021-present
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.nordic.android.library)
+    alias(libs.plugins.nordic.kotlin)
+    alias(libs.plugins.nordic.publish.android)
+}
+
+group = "no.nordicsemi.android"
+
+nordicPublishing {
+    POM_ARTIFACT_ID = "mcumgr-core-ktx"
+    POM_NAME = "Mcu Manager Core Kotlin Extensions"
+    POM_DESCRIPTION = "Kotlin Coroutines and Flow API for the Mcu Manager library."
+    POM_URL = "https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/"
+    POM_SCM_URL = "https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager/"
+    POM_SCM_CONNECTION = "scm:git@github.com:nordicsemi/Android-nRF-Connect-Device-Manager.git"
+    POM_SCM_DEV_CONNECTION = "scm:git@github.com:nordicsemi/Android-nRF-Connect-Device-Manager.git"
+}
+
+android {
+    namespace = "no.nordicsemi.android.mcumgr.ktx"
+
+    defaultConfig {
+        minSdk = 18
+    }
+
+    compileOptions {
+        // for now and foreseeable future we intentionally set the build system to emit bytecode that is compatible with
+        // java11 so as to ensure that we don't break the "classic xamarin (mono)" toolchain for C# android-java-bindings
+        // which employs an outdated version of r8 that can only handle java11 bytecode
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlin {
+        compilerOptions {
+            // for now and foreseeable future we intentionally set the build system to emit bytecode that is compatible with
+            // java11 so as to ensure that we don't break the "classic xamarin (mono)" toolchain for C# android-java-bindings
+            // which employs an outdated version of r8 that can only handle java11 bytecode
+            jvmTarget = JvmTarget.JVM_11
+        }
+    }
+}
+
+dependencies {
+    // The Mcu Manager library, whose managers are wrapped. It is a part of the public API.
+    api(project(":mcumgr-core"))
+
+    // Kotlin Coroutines. Flow is a part of the public API.
+    api(libs.kotlinx.coroutines.core)
+
+    // Annotations
+    implementation(libs.annotations)
+
+    // Test
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.20")
+    testImplementation("junit:junit:4.13.2")
+}
+
+dokka {
+    dokkaSourceSets.configureEach {
+        includes.from("Module.md")
+    }
+}
