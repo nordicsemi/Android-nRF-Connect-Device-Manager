@@ -57,7 +57,7 @@ import no.nordicsemi.android.observability.log.Category
 import no.nordicsemi.kotlin.ble.client.android.CentralManager
 import no.nordicsemi.kotlin.ble.client.android.Peripheral
 import no.nordicsemi.kotlin.ble.client.android.native
-import no.nordicsemi.kotlin.ble.core.BondState
+import no.nordicsemi.kotlin.ble.client.android.BondState
 import no.nordicsemi.kotlin.ble.core.ConnectionState
 import no.nordicsemi.kotlin.ble.core.Manager
 import no.nordicsemi.kotlin.ble.environment.android.NativeAndroidEnvironment
@@ -283,12 +283,15 @@ class MonitoringAndDiagnosticsConnection : Log.IdentifiableEmitter<String> {
             .onEach { bondState ->
                 when (bondState) {
                     // If bond state transitions from any of these...
-                    BondState.BONDED,
-                    BondState.BONDING -> wasBonding = true
-                    // ... to NONE, it means that the bonding failed.
-                    BondState.NONE -> {
+                    BondState.Bonded,
+                    BondState.Bonding -> wasBonding = true
+                    // ... to None, it means that the bonding failed.
+                    is BondState.None -> {
                         if (wasBonding) {
-                            logger?.warn(Category.MDS) { "Bonding failed" }
+                            logger?.warn(Category.MDS) {
+                                val reason = bondState.reason?.let { ": $it" } ?: ""
+                                "Bonding failed: $reason"
+                            }
                             // This will be reported as bond failure on disconnection.
                             bondingFailed = true
                             wasBonding = false

@@ -11,7 +11,6 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import no.nordicsemi.android.mcumgr.McuMgrCallback
 import no.nordicsemi.android.mcumgr.McuMgrTransport
@@ -28,7 +27,7 @@ import no.nordicsemi.android.ota.DeviceInfo
 import no.nordicsemi.android.ota.mcumgr.MemfaultDeviceInfoResponse
 import no.nordicsemi.android.ota.mcumgr.MemfaultManager
 import no.nordicsemi.android.ota.mcumgr.MemfaultProjectKeyResponse
-import no.nordicsemi.kotlin.ble.core.BondState
+import no.nordicsemi.kotlin.ble.client.android.BondState
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -59,7 +58,7 @@ class DeviceStatusViewModel @Inject internal constructor(
 ) : McuMgrViewModel(state) {
     val connectionState: LiveData<ConnectionState>
 
-    private val bondStateLiveData = MutableLiveData(BondState.NONE)
+    private val bondStateLiveData = MutableLiveData<BondState>(BondState.None())
     private val bufferLiveData = MutableLiveData<McuMgrBufferParams?>()
     private val bootloaderNameLiveData = MutableLiveData<String?>()
     private val bootloaderModeLiveData = MutableLiveData<Int?>()

@@ -29,7 +29,7 @@ public class FirmwareUpgradeSettings {
          * Sets window capacity.
          * <p>
          * On Zephyr this is equal to MCUMGR_TRANSPORT_NETBUF_COUNT - 1 value, where
-         * one buffer (if more then 1) is used for responses.
+         * one buffer (if more than 1) is used for responses.
          * @param windowCapacity number of windows that can be sent in parallel.
          * @see <a href="https://github.com/zephyrproject-rtos/zephyr/blob/19f645edd40b38e54f505135beced1919fdc7715/subsys/mgmt/mcumgr/transport/Kconfig#L32">MCUMGR_TRANSPORT_NETBUF_COUNT</a>
          * @return The builder.
