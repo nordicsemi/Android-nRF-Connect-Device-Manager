@@ -56,13 +56,32 @@
             app:layout_constraintStart_toEndOf="@+id/bonding_status_label"
             app:layout_constraintTop_toTopOf="@+id/bonding_status_label" />
 
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/encryption_status_label"
+            android:layout_width="130dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="@string/status_encryption_label"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/bonding_status_label" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/encryption_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/not_applicable"
+            android:textAllCaps="true"
+            android:textStyle="bold"
+            app:layout_constraintStart_toEndOf="@+id/encryption_status_label"
+            app:layout_constraintTop_toTopOf="@+id/encryption_status_label" />
+
         <com.google.android.material.divider.MaterialDivider
             android:id="@+id/divider"
             android:layout_width="12dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/bonding_status" />
+            app:layout_constraintTop_toBottomOf="@+id/encryption_status" />
 
 
         <com.google.android.material.textview.MaterialTextView

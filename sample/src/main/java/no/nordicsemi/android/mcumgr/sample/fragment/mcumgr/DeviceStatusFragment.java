@@ -6,6 +6,7 @@
 
 package no.nordicsemi.android.mcumgr.sample.fragment.mcumgr;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,6 +17,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.inject.Inject;
 
@@ -29,6 +33,7 @@ import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.McuMgrViewModelFacto
 import no.nordicsemi.android.observability.data.ChunksEmitter;
 import no.nordicsemi.android.ota.DeviceInfo;
 import no.nordicsemi.kotlin.ble.client.android.BondState;
+import no.nordicsemi.kotlin.ble.client.android.EncryptionState;
 
 public class DeviceStatusFragment extends Fragment implements Injectable {
 
@@ -107,7 +112,7 @@ public class DeviceStatusFragment extends Fragment implements Injectable {
                 case BondState.None none: {
                     final BondState.None.Reason reason = none.getReason();
                     if (reason != null) {
-                        binding.bondingStatus.setText(reason.toString());
+                        binding.bondingStatus.setText(bondFailureToString(reason));
                     } else {
                         binding.bondingStatus.setText(R.string.status_not_bonded);
                     }
@@ -123,6 +128,15 @@ public class DeviceStatusFragment extends Fragment implements Injectable {
                 }
             }
         });
+        // The encryption state is reported from Android 16 (API 36). Earlier versions do not tell
+        // whether the link is encrypted, so there is nothing to show.
+        if (Build.VERSION.SDK_INT < 36) {
+            binding.encryptionStatusLabel.setVisibility(View.GONE);
+            binding.encryptionStatus.setVisibility(View.GONE);
+        } else {
+            viewModel.getEncryptionState().observe(getViewLifecycleOwner(), state ->
+                    binding.encryptionStatus.setText(encryptionToString(state)));
+        }
         viewModel.getBufferParams().observe(getViewLifecycleOwner(), params -> {
             if (params != null) {
                 final String text = getString(R.string.status_mcumgr_buffer_size, params.getCount(), params.getSize());
@@ -202,5 +216,83 @@ public class DeviceStatusFragment extends Fragment implements Injectable {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    /**
+     * Returns the text describing the encryption state.
+     *
+     * @param state the state, or null if the device is not connected.
+     */
+    @NonNull
+    private String bondFailureToString(@NonNull final BondState.Reason reason) {
+        return switch (reason) {
+            case BondState.Reason.AuthenticationFailed ignored ->
+                    getString(R.string.status_bond_failure_authentication_failed);
+            case BondState.Reason.AuthenticationRejected ignored ->
+                    getString(R.string.status_bond_failure_authentication_rejected);
+            case BondState.Reason.AuthenticationCanceled ignored ->
+                    getString(R.string.status_bond_failure_authentication_canceled);
+            case BondState.Reason.AuthenticationTimeout ignored ->
+                    getString(R.string.status_bond_failure_authentication_timeout);
+            case BondState.Reason.RemoteAuthenticationCanceled ignored ->
+                    getString(R.string.status_bond_failure_remote_authentication_canceled);
+            case BondState.Reason.RemoteDeviceDown ignored ->
+                    getString(R.string.status_bond_failure_remote_device_down);
+            case BondState.Reason.DiscoveryInProgress ignored ->
+                    getString(R.string.status_bond_failure_discovery_in_progress);
+            case BondState.Reason.RepeatedAttempts ignored ->
+                    getString(R.string.status_bond_failure_repeated_attempts);
+            case BondState.Reason.Removed ignored ->
+                    getString(R.string.status_bond_failure_removed);
+            case BondState.Reason.Unknown unknown ->
+                    getString(R.string.status_bond_failure_unknown, unknown.getCode());
+            default -> getString(R.string.status_unknown);
+        };
+    }
+
+    private String encryptionToString(@Nullable final EncryptionState state) {
+        switch (state) {
+            case null -> {
+                return getString(R.string.not_applicable);
+            }
+            case EncryptionState.Encrypted encrypted -> {
+                final List<String> details = new ArrayList<>();
+                if (encrypted.getAlgorithm() != EncryptionState.Algorithm.Unknown) {
+                    details.add(encrypted.getAlgorithm().name());
+                }
+                final Integer keySize = encrypted.getKeySize();
+                if (keySize != null) {
+                    details.add(getString(R.string.status_encryption_key_size, keySize * 8));
+                }
+                return details.isEmpty() ?
+                        getString(R.string.status_encrypted) :
+                        getString(R.string.status_encrypted_details, String.join(", ", details));
+            }
+            case EncryptionState.NotEncrypted notEncrypted -> {
+                final EncryptionState.Reason reason = notEncrypted.getReason();
+                if (reason == null) {
+                    return getString(R.string.status_not_encrypted);
+                }
+                final String text;
+                if (reason instanceof EncryptionState.Reason.ControllerError error) {
+                    text = getString(R.string.status_encryption_failure_controller, error.getStatus());
+                } else if (reason instanceof EncryptionState.Reason.LeEncryptionFailure
+                        || reason instanceof EncryptionState.Reason.BrEdrAuthenticationFailure) {
+                    text = getString(R.string.status_encryption_failure_le);
+                } else if (reason instanceof EncryptionState.Reason.LeIncomingPairing
+                        || reason instanceof EncryptionState.Reason.BrEdrIncomingPairing) {
+                    text = getString(R.string.status_encryption_failure_pairing);
+                } else if (reason instanceof EncryptionState.Reason.Unknown unknown) {
+                    text = getString(R.string.status_encryption_failure_unknown, unknown.getCode());
+                } else {
+                    text = reason.toString();
+                }
+                return getString(R.string.status_not_encrypted_reason, text);
+            }
+            default -> {
+            }
+        }
+        // Unknown.
+        return getString(R.string.status_unknown);
     }
 }

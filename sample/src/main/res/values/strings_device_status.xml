@@ -9,6 +9,7 @@
     <string name="status_title">Device Status</string>
     <string name="status_status_label">Connection status:</string>
     <string name="status_bond_label">Bonding status:</string>
+    <string name="status_encryption_label">Encryption:</string>
     <string name="status_subtitle_smp">Device Management</string>
     <string name="status_mcumgr_supported">SMP Service:</string>
     <string name="status_mcumgr_buffer_size_label">Buffer details:</string>
@@ -43,6 +44,26 @@
     <string name="status_not_bonded">Not bonded</string>
     <string name="status_bonding">Bonding…</string>
     <string name="status_bonded">Bonded</string>
+    <string name="status_bond_failure_authentication_failed">Authentication failed</string>
+    <string name="status_bond_failure_authentication_rejected">Authentication rejected</string>
+    <string name="status_bond_failure_authentication_canceled">Authentication canceled</string>
+    <string name="status_bond_failure_authentication_timeout">Authentication timed out</string>
+    <string name="status_bond_failure_remote_authentication_canceled">Authentication canceled by the peripheral</string>
+    <string name="status_bond_failure_remote_device_down">Peripheral is down</string>
+    <string name="status_bond_failure_discovery_in_progress">Discovery in progress</string>
+    <string name="status_bond_failure_repeated_attempts">Repeated attempts</string>
+    <string name="status_bond_failure_removed">Bond removed</string>
+    <string name="status_bond_failure_unknown">Bonding failed (code %d)</string>
+
+    <string name="status_encrypted">Encrypted</string>
+    <string name="status_encrypted_details">Encrypted (%s)</string>
+    <string name="status_not_encrypted">Not encrypted</string>
+    <string name="status_not_encrypted_reason">Not encrypted (%s)</string>
+    <string name="status_encryption_key_size">%d-bit</string>
+    <string name="status_encryption_failure_controller">controller error 0x%02X</string>
+    <string name="status_encryption_failure_le">key missing on the peripheral</string>
+    <string name="status_encryption_failure_pairing">peripheral started pairing</string>
+    <string name="status_encryption_failure_unknown">code %d</string>
 
     <string name="status_unknown">UNKNOWN</string>
     <string name="status_unknown_value">UNKNOWN: %d</string>
