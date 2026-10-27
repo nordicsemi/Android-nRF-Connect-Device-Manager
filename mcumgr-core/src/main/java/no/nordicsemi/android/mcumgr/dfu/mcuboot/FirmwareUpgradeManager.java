@@ -158,8 +158,8 @@ public class FirmwareUpgradeManager implements FirmwareUpgradeController {
             }
 
             /**
-             * Should the application settings, including app data, bond information, etc,
-             * be erase when the new image is applied.
+             * Should the application settings, including app data, bond information, etc.,
+             * be erased when the new image is applied.
              * <p>
              * Erasing application settings is useful when switching major version of the app,
              * which is not compatible with the old one, or when sending other non-compatible
@@ -295,7 +295,7 @@ public class FirmwareUpgradeManager implements FirmwareUpgradeController {
     }
 
     /**
-     * Sets the manager mode. By default the {@link Mode#TEST_AND_CONFIRM} mode is used.
+     * Sets the manager mode. By default, the {@link Mode#TEST_AND_CONFIRM} mode is used.
      * The mode may be set only before calling {@link #start(ImageSet, Settings)} method.
      * <p>
      * This value is ignored when the target device supports SUIT (Software Update for

@@ -15,6 +15,7 @@ import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.Success
 import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.TerminateLocalHost
 import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.TerminatePeerUser
 import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.Timeout
+import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.UnacceptableConnectionParameters
 import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.Unknown
 import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.UnsupportedAddress
 import no.nordicsemi.kotlin.ble.core.ConnectionState.Disconnected.Reason.UnsupportedConfiguration
@@ -50,7 +51,7 @@ internal fun ConnectionState.map(
 				State.Disconnected(Reason.CONNECTION_LOST)
 			UnsupportedAddress, InsufficientAuthentication ->
 				State.Disconnected(Reason.BONDING_FAILED)
-			is Unknown, UnsupportedConfiguration ->
+			is Unknown, UnsupportedConfiguration, UnacceptableConnectionParameters ->
 				State.Disconnected(Reason.FAILED_TO_CONNECT)
 		}
 }

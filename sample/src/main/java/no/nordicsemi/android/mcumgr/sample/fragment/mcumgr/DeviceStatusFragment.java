@@ -28,6 +28,7 @@ import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.FeatureState;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.McuMgrViewModelFactory;
 import no.nordicsemi.android.observability.data.ChunksEmitter;
 import no.nordicsemi.android.ota.DeviceInfo;
+import no.nordicsemi.kotlin.ble.client.android.BondState;
 
 public class DeviceStatusFragment extends Fragment implements Injectable {
 
@@ -103,15 +104,23 @@ public class DeviceStatusFragment extends Fragment implements Injectable {
         });
         viewModel.getBondState().observe(getViewLifecycleOwner(), state -> {
             switch (state) {
-                case NONE:
-                    binding.bondingStatus.setText(R.string.status_not_bonded);
+                case BondState.None none: {
+                    final BondState.None.Reason reason = none.getReason();
+                    if (reason != null) {
+                        binding.bondingStatus.setText(reason.toString());
+                    } else {
+                        binding.bondingStatus.setText(R.string.status_not_bonded);
+                    }
                     break;
-                case BONDING:
-                    binding.bondingStatus.setText(R.string.status_bonding);
-                    break;
-                case BONDED:
+                }
+                case BondState.Bonded ignored: {
                     binding.bondingStatus.setText(R.string.status_bonded);
                     break;
+                }
+                default: {
+                    binding.bondingStatus.setText(R.string.status_bonding);
+                    break;
+                }
             }
         });
         viewModel.getBufferParams().observe(getViewLifecycleOwner(), params -> {
