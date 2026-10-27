@@ -31,6 +31,7 @@ import no.nordicsemi.android.mcumgr.exception.McuMgrException
 import no.nordicsemi.android.mcumgr.exception.McuMgrTimeoutException
 import no.nordicsemi.android.mcumgr.log.Category
 import no.nordicsemi.android.mcumgr.log.McuMgrLogger
+import no.nordicsemi.android.mcumgr.managers.DefaultManager
 import no.nordicsemi.android.mcumgr.response.McuMgrResponse
 import no.nordicsemi.kotlin.ble.client.android.CentralManager
 import no.nordicsemi.kotlin.ble.client.android.ConnectionPriority
@@ -296,6 +297,16 @@ class McuMgrBleTransport @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Connects the device and awaits the connection to be ready.
+     *
+     * The SMP connection is ready after notifications to the SMP characteristics are enabled and
+     * the transport reads the number of MCU buffers on the device using [DefaultManager.params].
+     *
+     * @throws McuMgrNotSupportedException if the device has no usable SMP service.
+     * @throws McuMgrDisconnectedException if the device disconnects before the SMP service is ready.
+     * @throws McuMgrException if the connection fails.
+     */
     suspend fun connect() {
         ensureConnected().ready.await()
     }
