@@ -62,7 +62,7 @@ dependencies {
     implementation(libs.annotations)
 
     // Test
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.20")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.21")
     testImplementation("junit:junit:4.13.2")
 }
 
