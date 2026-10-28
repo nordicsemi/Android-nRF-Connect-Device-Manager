@@ -24,7 +24,9 @@ class SmpProtocolSessionTest {
 
     private abstract class TestTransaction : SmpTransaction {
 
-        val result = Channel<ByteArray>(Channel.RENDEZVOUS)
+        // The session delivers the response on another thread, possibly before the test calls
+        // receive(). A rendezvous channel would drop it in trySend() and the test would hang.
+        val result = Channel<ByteArray>(Channel.UNLIMITED)
 
         override fun onResponse(data: ByteArray) {
             result.trySend(data)
