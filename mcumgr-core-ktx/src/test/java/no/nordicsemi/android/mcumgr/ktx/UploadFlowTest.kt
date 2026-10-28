@@ -27,8 +27,6 @@ class UploadFlowTest {
         val data = java.io.ByteArrayOutputStream()
 
         fun write(request: Map<String, Any>): Map<String, Any> {
-            // Let the progress be reported before the upload ends.
-            Thread.sleep(5)
             val offset = request.getValue("off") as Int
             val chunk = request.getValue("data") as ByteArray
             if (offset == data.size()) {
@@ -47,10 +45,11 @@ class UploadFlowTest {
 
         assertIs<TransferState.Started>(states.first())
         assertEquals(TransferState.Completed(Unit), states.last())
+        // The progress is reported by another coroutine, which is stopped when the upload ends, so
+        // a fast upload may report none, or not the last one. Mapping of the progress is tested
+        // in TransferFlowTest.
         val progress = states.filterIsInstance<TransferState.InProgress>()
-        assertTrue(progress.isNotEmpty())
         assertTrue(progress.zipWithNext().all { (a, b) -> b.current >= a.current })
-        assertEquals(file.size, progress.last().current)
         assertContentEquals(file, device.data.toByteArray())
     }
 
@@ -68,8 +67,9 @@ class UploadFlowTest {
         val states = mutableListOf<TransferState<Unit>>()
         fs.upload("/lfs/file.bin", ByteArray(20_000)).collect {
             states += it
-            if (it is TransferState.InProgress && it.current > 0) {
-                (states.first() as TransferState.Started).controller.cancel()
+            // The upload takes seconds, as each of the packets takes 20 ms.
+            if (it is TransferState.Started) {
+                it.controller.cancel()
             }
         }
 
