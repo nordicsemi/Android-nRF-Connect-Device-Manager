@@ -54,11 +54,13 @@ In `ota` module:
 
 For versions 2.x use *version2* branch or tags.
 
+In the snippets below replace `<VERSION>` with the latest version, shown in the badge at the top.
+
 ### McuManager BLE (Recommended)
 Contains the core and a BLE transport implementation using Nordic's [Android-BLE-Library v2](https://github.com/nordicsemi/Android-BLE-Library).
 
 ```groovy
-implementation 'no.nordicsemi.android:mcumgr-ble:3.4.1'
+implementation 'no.nordicsemi.android:mcumgr-ble:<VERSION>'
 ```
 
 The core module will be included automatically.
@@ -77,7 +79,7 @@ the transport uses the app's `CentralManager`, and the `Peripheral` can be used 
 the same time, for example by the [Observability](#observability) module.
 
 ```groovy
-implementation 'no.nordicsemi.android:mcumgr-ble2:3.4.1'
+implementation 'no.nordicsemi.android:mcumgr-ble2:<VERSION>'
 ```
 
 The core module will be included automatically.
@@ -100,7 +102,7 @@ See the [module documentation](mcumgr-ble2/Module.md) for details.
 Core dependency only. Use if you want to provide your own transport implementation.
 
 ```groovy
-implementation 'no.nordicsemi.android:mcumgr-core:3.4.1'
+implementation 'no.nordicsemi.android:mcumgr-core:<VERSION>'
 ```
 
 > Latest version targeting API 30 (Android 11) is 0.13.0-beta07.
@@ -111,7 +113,7 @@ uploading and downloading images and files, and the firmware upgrade, report the
 a `Flow`. It works with any transport.
 
 ```groovy
-implementation 'no.nordicsemi.android:mcumgr-core-ktx:3.4.1'
+implementation 'no.nordicsemi.android:mcumgr-core-ktx:<VERSION>'
 ```
 
 The core module will be included automatically.
@@ -134,14 +136,14 @@ See the [module documentation](mcumgr-core-ktx/Module.md) for details.
 Integration with nRF Cloud Over-the-Air (OTA) firmware update services.
 
 ```groovy
-implementation 'no.nordicsemi.android:ota:3.4.1'
+implementation 'no.nordicsemi.android:ota:<VERSION>'
 ```
 
 ### McuManager Observability
 Integration with nRF Cloud Monitoring & Diagnostics Service (MDS).
 
 ```groovy
-implementation 'no.nordicsemi.android:observability:3.4.1'
+implementation 'no.nordicsemi.android:observability:<VERSION>'
 ```
 
 ### Migration from the original repo
@@ -154,7 +156,7 @@ implementation 'io.runtime.mcumgr:mcumgr-ble:0.XX.X'
 ```
 to
 ```groovy
-implementation 'no.nordicsemi.android:mcumgr-ble:3.4.1'
+implementation 'no.nordicsemi.android:mcumgr-ble:<VERSION>'
 ```
 
 Starting from version 3.0.0, the package name has changed from `io.runtime.mcumgr` to `no.nordicsemi.android.mcumgr`.
