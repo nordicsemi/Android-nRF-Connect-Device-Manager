@@ -12,12 +12,16 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import no.nordicsemi.android.mcumgr.McuMgrHeader
 import no.nordicsemi.android.mcumgr.ble.util.RotatingCounter
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 private const val SMP_SEQ_NUM_MAX = 255
 
-internal class SmpProtocolSession(
-    private val handler: Handler? = null
+internal class SmpProtocolSession @JvmOverloads constructor(
+    private val handler: Handler? = null,
+    // The context in which the reader, the writer and the timeouts run. Tests use it to run the
+    // session in virtual time.
+    context: CoroutineContext = EmptyCoroutineContext,
 ) {
     internal companion object {
         const val TIMEOUT: Long = 30_000
@@ -42,7 +46,7 @@ internal class SmpProtocolSession(
         }
     }
 
-    private val scope = CoroutineScope(EmptyCoroutineContext)
+    private val scope = CoroutineScope(context)
     private val txChannel: Channel<Outgoing> = Channel(SMP_SEQ_NUM_MAX + 1)
     private val rxChannel: Channel<ByteArray> = Channel(SMP_SEQ_NUM_MAX + 1)
     private val sequenceCounter = RotatingCounter(SMP_SEQ_NUM_MAX)

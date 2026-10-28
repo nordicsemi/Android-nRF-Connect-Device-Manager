@@ -3,7 +3,10 @@ package no.nordicsemi.android.mcumgr.ble
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import no.nordicsemi.android.ble.exception.DeviceDisconnectedException
 import no.nordicsemi.android.mcumgr.McuManager
 import no.nordicsemi.android.mcumgr.McuMgrHeader
@@ -16,16 +19,22 @@ import no.nordicsemi.android.mcumgr.response.dflt.McuMgrEchoResponse
 import no.nordicsemi.android.mcumgr.util.CBOR
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 
 class SmpProtocolSessionTest {
 
-    private val session = SmpProtocolSession()
+    // The session runs in virtual time on the same scheduler as the tests, so the tests do not
+    // wait for the timeouts, and responses are delivered in a deterministic order.
+    private val testScope = TestScope()
+    private val session = SmpProtocolSession(
+        context = StandardTestDispatcher(testScope.testScheduler)
+    )
 
     private abstract class TestTransaction : SmpTransaction {
 
-        // The session delivers the response on another thread, possibly before the test calls
-        // receive(). A rendezvous channel would drop it in trySend() and the test would hang.
+        // The response may be delivered before the test calls receive(). A rendezvous channel
+        // would drop it in trySend() and the test would wait forever.
         val result = Channel<ByteArray>(Channel.UNLIMITED)
 
         override fun onResponse(data: ByteArray) {
@@ -53,7 +62,7 @@ class SmpProtocolSessionTest {
     }
 
     @Test
-    fun `send and receive, success`() = runBlocking {
+    fun `send and receive, success`() = testScope.runTest {
         val echo = "Hello!"
         val request = McuManager.buildPacket(
             McuMgrScheme.BLE,
@@ -71,7 +80,7 @@ class SmpProtocolSessionTest {
     }
 
     @Test
-    fun `send and receive, success, no timeout`() = runBlocking {
+    fun `send and receive, success, no timeout`() = testScope.runTest {
         val echo = "Hello!"
         val request = McuManager.buildPacket(
             McuMgrScheme.BLE,
@@ -86,11 +95,13 @@ class SmpProtocolSessionTest {
             McuMgrEchoResponse::class.java
         )
         assertEquals(echo, response.r)
-        delay(SmpProtocolSession.TIMEOUT + 1_000) // Wait longer than the timeout
+        delay(40_000 + 1_000) // Wait longer than the timeout of the request
+        // The timeout of a transaction that received a response is cancelled, so it did not fail.
+        assertFalse(echoTransaction.result.isClosedForReceive)
     }
 
     @Test
-    fun `send, counter increase and rollover`() = runBlocking {
+    fun `send, counter increase and rollover`() = testScope.runTest {
         val echo = "Hello!"
         val request = newEchoRequest(echo)
         repeat(256) { i ->
@@ -112,7 +123,7 @@ class SmpProtocolSessionTest {
     }
 
     @Test
-    fun `send, response timeout`() = runBlocking {
+    fun `send, response timeout`() = testScope.runTest {
         val echo = "Hello!"
         val request = newEchoRequest(echo)
         val transaction = object : TestTransaction() {
@@ -126,7 +137,7 @@ class SmpProtocolSessionTest {
     }
 
     @Test
-    fun `close fails active transactions`() = runBlocking {
+    fun `close fails active transactions`() = testScope.runTest {
         val echo = "Hello!"
         val request = newEchoRequest(echo)
         val transaction = object : TestTransaction() {
@@ -144,16 +155,16 @@ class SmpProtocolSessionTest {
     }
 
     @Test
-    fun `send overflows transmit buffer`() = runBlocking {
+    fun `send overflows transmit buffer`() = testScope.runTest {
         val echo = "Hello!"
         val request = newEchoRequest(echo)
         val transaction = object : TestTransaction() {
-            override fun send(data: ByteArray) {
-                runBlocking { delay (10000) }
-            }
+            override fun send(data: ByteArray) {}
         }
-        // First request is consumed which blocks the channel, remaining 256
-        // fills the channel buffer to capacity
+        // Let the writer start and wait for requests.
+        runCurrent()
+        // The launched coroutines run before the writer, which was resumed by the first request:
+        // the first request is consumed, the remaining 256 fill the channel buffer to capacity.
         repeat(257) {
             launch {
                 session.send(request, 40_000, transaction)
