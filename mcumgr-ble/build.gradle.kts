@@ -62,8 +62,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     // Test
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.21")
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.kotlin.junit)
 }
 
 dokka {
