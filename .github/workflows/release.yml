@@ -201,7 +201,7 @@ jobs:
       # The runner image does not have Fastlane. It is installed from the Gemfile.lock.
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
+          ruby-version: '4.0'
           bundler-cache: true
       - shell: bash
         env:
