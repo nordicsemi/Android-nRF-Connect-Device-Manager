@@ -1,8 +1,8 @@
 # Releasing nRF Connect Device Manager
 
-A release is made by the **Release** GitHub Action. It runs the unit tests, generates the documentation
-and the README, creates the tag, publishes the libraries to Maven Central and deploys the sample
-app to Google Play (Internal track). The version of the release is the name of the tag, e.g.
+A release is made by the **Release** GitHub Action. It runs the unit tests, generates the documentation,
+creates the tag, publishes the libraries to Maven Central and deploys the sample app to Google Play
+(Internal track). The version of the release is the name of the tag, e.g.
 `3.5.0-alpha01`.
 
 ## How to release
@@ -10,8 +10,9 @@ app to Google Play (Internal track). The version of the release is the name of t
 1. Merge everything that should be released to `main`.
 2. Open **Actions → Release → Run workflow**.
 3. Choose the branch in **Use workflow from**, e.g. `main`.
-4. Enter the **version**, e.g. `3.5.0-alpha01`, and run the workflow. To try it first, tick
-   **Dry run** (see [Dry run](#dry-run)).
+4. Enter the **version**, e.g. `3.5.0-alpha01`. Untick **Deploy** to skip deploying the sample app to
+   Google Play (it is ticked by default). To try the release first, tick **Dry run** (see
+   [Dry run](#dry-run)). Run the workflow.
 
 The workflow runs in stages. Each one is a job that depends on the previous one, so the graph of the
 run shows which stage failed:
@@ -19,16 +20,16 @@ run shows which stage failed:
 1. **Check.** Checks that it runs on a branch, that the version looks like `3.5.0` or
    `3.5.0-alpha01`, and that the tag does not exist yet.
 2. **Test.** Runs the unit tests (`./gradlew testDebugUnitTest`).
-3. **Docs.** Runs `./gradlew dokkaGenerate` for the given version and generates `README.md` from
-   `moustache/README.mo`. The README shows the version without the pre-release suffix (`3.5.0` for
-   `3.5.0-alpha01`). The result is committed to the branch as `Docs for <version>`. The
-   documentation is written to `docs/html`, which is published by GitHub Pages.
+3. **Docs.** Runs `./gradlew dokkaGenerate` for the given version and commits the result to the
+   branch as `Docs for <version>`. The documentation is written to `docs/html`, which is published
+   by GitHub Pages.
 4. **Tag.** Creates the tag `<version>` on the commit with the documentation, and pushes it.
 5. **Publish** and **Deploy**, which run in parallel:
    * **Publish** builds the tag, publishes all the libraries and releases the staging repository on
      Maven Central.
    * **Deploy** builds the signed app bundle from the tag and uploads it to the Internal track of
-     Google Play using Fastlane (`bundle exec fastlane deployInternal`).
+     Google Play using Fastlane (`bundle exec fastlane deployInternal`). It is skipped when
+     **Deploy** is unticked.
 
 Pushing a tag does not start the **Release** workflow, and the only way to release is to run it.
 
@@ -45,8 +46,8 @@ With **Dry run** ticked the workflow goes through all the stages, but nothing le
 
 1. **Check** passes also for a version that was already released (it only warns that the tag exists).
 2. **Test** runs the unit tests.
-3. **Docs** generates the documentation and the README, and prints the number of changed files. It
-   does not commit or push them.
+3. **Docs** generates the documentation, and prints the number of changed files. It does not commit
+   or push them.
 4. **Tag** creates the tag locally, on the runner, and does not push it.
 5. **Publish** builds and signs the libraries into the local Maven repository of the runner
    (`./gradlew publishToMavenLocal`). This checks the signing key and the secrets, but does not
