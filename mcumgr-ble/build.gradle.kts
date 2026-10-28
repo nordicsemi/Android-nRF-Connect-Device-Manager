@@ -63,6 +63,7 @@ dependencies {
 
     // Test
     testImplementation(libs.kotlin.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 dokka {
