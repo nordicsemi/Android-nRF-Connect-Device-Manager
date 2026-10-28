@@ -23,13 +23,14 @@ platform :android do
     gradle(task: "releaseStagingRepositories")
   end
 
-  desc "Deploy build to Internal channel."
-    lane :deployInternal do
-      gradle(task: "clean bundleRelease")
-      upload_to_play_store(
-        track: 'internal',
-        aab: 'sample/build/outputs/bundle/release/sample-release.aab'
-      )
+  desc "Deploy build to Internal channel. With dry_run:true the bundle is only validated by Google Play."
+  lane :deployInternal do |options|
+    gradle(task: "clean bundleRelease")
+    upload_to_play_store(
+      track: 'internal',
+      aab: 'sample/build/outputs/bundle/release/sample-release.aab',
+      validate_only: options[:dry_run].to_s == "true"
+    )
   end
 
 end

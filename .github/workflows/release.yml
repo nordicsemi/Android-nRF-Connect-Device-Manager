@@ -1,0 +1,221 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 3.5.0-alpha01'
+        required: true
+        type: string
+      dry-run:
+        description: 'Dry run'
+        required: false
+        type: boolean
+        default: false
+# Only one release at a time.
+concurrency:
+  group: release
+  cancel-in-progress: false
+permissions:
+  contents: read
+env:
+  # The version used by the Nordic Gradle plugins for the app, the libraries and the documentation.
+  RELEASE_VERSION: ${{ inputs.version }}
+  # The branch to release.
+  BRANCH: ${{ github.ref_name }}
+  # When true, nothing is pushed, tagged, published or uploaded.
+  DRY_RUN: ${{ inputs.dry-run }}
+# The release is made in stages. Each one depends on the previous one, so the graph shows where
+# it failed. After fixing the problem, use "Re-run failed jobs" to continue from that stage.
+# Publish (Maven Central) and Deploy (Google Play) run in parallel, after the tag is created.
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - shell: bash
+        run: |
+          if [[ "${{ github.ref_type }}" != "branch" ]]; then
+            echo "::error::Run this workflow on a branch: choose the branch in \"Use workflow from\"."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::'$RELEASE_VERSION' is not a valid version, e.g. 3.5.0 or 3.5.0-alpha01."
+            exit 1
+          fi
+          if gh api "repos/${{ github.repository }}/git/ref/tags/$RELEASE_VERSION" > /dev/null 2>&1; then
+            # A dry run does not create the tag, so it may be run for a version that was released.
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "::warning::The tag $RELEASE_VERSION already exists, it is ignored in a dry run."
+            else
+              echo "::error::The tag $RELEASE_VERSION already exists."
+              exit 1
+            fi
+          fi
+
+  test:
+    name: Test
+    needs: check
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+          cache: 'gradle'
+      - name: Run unit tests
+        shell: bash
+        run: ./gradlew testDebugUnitTest --continue --stacktrace
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore
+
+  docs:
+    name: Docs
+    needs: test
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: write # Push the documentation.
+    outputs:
+      # The commit with the documentation, which will be tagged.
+      commit: ${{ steps.commit.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+          cache: 'gradle'
+      # The version is taken from RELEASE_VERSION, there is no need to create a tag first.
+      - name: Generate documentation
+        shell: bash
+        run: ./gradlew dokkaGenerate --stacktrace
+      # README.md is generated from moustache/README.mo. It shows the version without the
+      # pre-release suffix, e.g. 3.5.0 for 3.5.0-alpha01.
+      - name: Generate README.md
+        shell: bash
+        run: |
+          VERSION="${RELEASE_VERSION%%-*}"
+          rm -f ./README.md
+          VERSION="$VERSION" ./moustache/mo ./moustache/README.mo > ./README.md
+      - name: Commit the documentation
+        id: commit
+        if: ${{ !inputs.dry-run }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs README.md
+          # Nothing to commit if the documentation was already up to date.
+          git diff --cached --quiet || git commit -m "Docs for $RELEASE_VERSION"
+          git push origin "HEAD:$BRANCH"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Show the changes in the documentation (dry run)
+        if: ${{ inputs.dry-run }}
+        shell: bash
+        run: git status --short docs README.md | wc -l
+
+  tag:
+    name: Tag
+    needs: docs
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: write # Push the tag.
+    steps:
+      # The tag points at the commit with the documentation. A dry run does not commit it.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.docs.outputs.commit || github.sha }}
+      - shell: bash
+        run: |
+          git tag "$RELEASE_VERSION"
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "Dry run: the tag $RELEASE_VERSION is not pushed."
+          else
+            git push origin "refs/tags/$RELEASE_VERSION"
+          fi
+
+  publish:
+    name: Publish
+    needs: tag
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      # A dry run does not create the tag, so it builds the commit that was tested.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.dry-run && github.sha || format('refs/tags/{0}', inputs.version) }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+          cache: 'gradle'
+      - shell: bash
+        env:
+          # The following env variables are used by the Nordic publish Gradle plugins.
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
+          OSSR_USERNAME: ${{ secrets.OSSR_USERNAME }}
+          OSSR_PASSWORD: ${{ secrets.OSSR_PASSWORD }}
+          SONATYPE_STAGING_PROFILE_ID: ${{ secrets.SONATYPE_STAGING_PROFILE_ID }}
+        # The script generates sec.gpg file that is required for signing and runs the Gradle
+        # tasks. A dry run builds and signs the libraries into the local Maven repository of the
+        # runner, which checks the signing, but publishes nothing.
+        run: |
+          java --version
+          echo "${{ secrets.GPG_FILE }}" > sec.gpg.asc
+          gpg -d --passphrase "${{ secrets.GPG_FILE_PSWD }}" --batch sec.gpg.asc > sec.gpg
+          if [[ "$DRY_RUN" == "true" ]]; then
+            ./gradlew publishToMavenLocal
+          else
+            ./gradlew publish
+            ./gradlew releaseStagingRepositories
+          fi
+
+  deploy:
+    name: Deploy
+    needs: tag
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      # A dry run does not create the tag, so it builds the commit that was tested.
+      # The version code of the app is based on the number of commits, so the whole history is needed.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.dry-run && github.sha || format('refs/tags/{0}', inputs.version) }}
+          fetch-depth: 0
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+          cache: 'gradle'
+      # The runner image does not have Fastlane. It is installed from the Gemfile.lock.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - shell: bash
+        env:
+          # The following env variables are used by signing configuration in sample/build.gradle
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEYSTORE_KEY_PSWD: ${{ secrets.KEYSTORE_KEY_PSWD }}
+          KEYSTORE_PSWD: ${{ secrets.KEYSTORE_PSWD }}
+        # The script decodes keystore (required by sample/build.gradle) and fastlane-api.json
+        # needed by fastlane (see fastlane/Appfile). A dry run builds and signs the app bundle,
+        # and Google Play only validates it, nothing is uploaded.
+        run: |
+          echo "${{ secrets.KEYSTORE_FILE }}" > keystore.asc
+          gpg -d --passphrase "${{ secrets.KEYSTORE_FILE_PSWD }}" --batch keystore.asc > keystore
+          echo "${{ secrets.API_KEY_FILE }}" > fastlane-api.json.asc
+          gpg -d --passphrase "${{ secrets.API_KEY_FILE_PSWD }}" --batch fastlane-api.json.asc > fastlane-api.json
+          bundle exec fastlane deployInternal dry_run:"$DRY_RUN"
