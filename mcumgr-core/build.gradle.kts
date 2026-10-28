@@ -71,7 +71,7 @@ dependencies {
     implementation(libs.fasterxml.databind)
 
     // Test
-    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.junit)
 }
 
 dokka {
