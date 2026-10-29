@@ -1,0 +1,284 @@
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>FsManagerKtx</title>
+<link href="../../../images/logo-icon.svg" rel="icon" type="image/svg"><script>var pathToRoot = "../../../";</script>
+    <script>document.documentElement.classList.replace("no-js", "js");</script>
+    <script>const storage = localStorage.getItem("dokka-dark-mode")
+      if (storage == null) {
+        const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (osDarkSchemePreferred === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+      } else {
+        const savedDarkMode = JSON.parse(storage)
+        if (savedDarkMode === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+      }
+    </script>
+<script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async></script>
+<link href="../../../styles/style.css" rel="Stylesheet">
+<link href="../../../styles/main.css" rel="Stylesheet">
+<link href="../../../styles/prism.css" rel="Stylesheet">
+<link href="../../../styles/logo-styles.css" rel="Stylesheet">
+<link href="../../../ui-kit/ui-kit.min.css" rel="Stylesheet">
+<script type="text/javascript" src="../../../scripts/safe-local-storage_blocking.js"></script>
+<script type="text/javascript" src="../../../scripts/navigation-loader.js" async></script>
+<script type="text/javascript" src="../../../scripts/platform-content-handler.js" async></script>
+<script type="text/javascript" src="../../../scripts/main.js" defer></script>
+<script type="text/javascript" src="../../../scripts/prism.js" async></script>
+<script type="text/javascript" src="../../../ui-kit/ui-kit.min.js" defer></script></head>
+<body>
+<div class="root">
+    <header class="navigation theme-dark" id="navigation-wrapper" role="banner">
+<a class="library-name--link" href="../../../index.html" tabindex="1">
+                    nRF Connect Device Manager
+            </a>        <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle" type="button">Toggle table of contents
+        </button>
+        <div class="navigation-controls--break ui-kit_mobile-only"></div>
+        <div class="library-version" id="library-version">3.5.0-alpha01
+        </div>
+        <div class="navigation-controls">
+        <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
+                <button class="platform-tag platform-selector jvm-like" data-active="" aria-pressed="true" data-filter=":mcumgr-core-ktx/release">release</button>
+            <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
+                <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox" data-role="dropdown-toggle" aria-controls="platform-tags-listbox" aria-haspopup="listbox" aria-expanded="false" aria-label="Toggle source sets"></button>
+                <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox" aria-label="Target filter">
+                    <div class="dropdown--header"><span>Target filter</span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close target filter">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                        <li role="option" class="dropdown--option platform-selector-option jvm-like" tabindex="0">
+                            <label class="checkbox">
+                                <input type="checkbox" class="checkbox--input" id=":mcumgr-core-ktx/release" data-filter=":mcumgr-core-ktx/release">
+                                <span class="checkbox--icon"></span>
+                                release
+                            </label>
+                        </li>
+                </ul>
+                <div class="dropdown--overlay"></div>
+            </div>
+        </ul>
+            <button class="navigation-controls--btn navigation-controls--btn_theme" id="theme-toggle-button" type="button">Switch theme
+            </button>
+            <div class="navigation-controls--btn navigation-controls--btn_search" id="searchBar" role="button">Search in
+                API
+            </div>
+        </div>
+    </header>
+    <div id="container">
+        <nav id="leftColumn" class="sidebar" data-item-type="SECTION" data-item-config="{&quot;defaultSize&quot;: 280, &quot;minSize&quot;: 200, &quot;maxSize&quot;: 400}">
+            <a class="toc--skip-link" href="#main">Skip to content</a>
+            <div class="dropdown theme-dark_mobile" data-role="dropdown" id="toc-dropdown">
+                <ul role="listbox" id="toc-listbox" class="dropdown--list dropdown--list_toc-list" data-role="dropdown-listbox" aria-label="Table of contents">
+                    <div class="dropdown--header">
+                            <span>
+                                    nRF Connect Device Manager
+                            </span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close table of contents">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                    <div class="sidebar--inner" id="sideMenu"></div>
+                </ul>
+                <div class="dropdown--overlay"></div>
+            </div>
+        </nav>
+        <div id="resizer" class="resizer" data-item-type="BAR"></div>
+        <div id="main" data-item-type="SECTION" role="main">
+<div class="main-content" data-page-type="classlike" id="content" pageids="mcumgr-core-ktx::no.nordicsemi.android.mcumgr.ktx.managers/FsManagerKtx///PointingToDeclaration//1429619253">
+  <div class="breadcrumbs"><a href="../../index.html">mcumgr-core-ktx</a><span class="delimiter">/</span><a href="../index.html">no.nordicsemi.android.mcumgr.ktx.managers</a><span class="delimiter">/</span><span class="current">FsManagerKtx</span></div>
+  <div class="cover ">
+    <h1 class="cover"><span>Fs</span><wbr><span>Manager</span><wbr><span><span>Ktx</span></span></h1>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">FsManagerKtx</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>manager<span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.managers/-fs-manager/index.html">FsManager</a></span></span><span class="token punctuation">)</span></div><p class="paragraph">A manager of the File System group of Mcu Manager, with suspending methods and flows. It wraps <a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.managers/-fs-manager/index.html">FsManager</a>.</p><p class="paragraph">Every suspending method waits until the response is received, and throws a <a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.exception/-mcu-mgr-exception/index.html">McuMgrException</a> if the request fails, or a <a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.exception/-mcu-mgr-error-exception/index.html">McuMgrErrorException</a> if the device responds with an error, that is with a non-zero return code. Cancelling the calling coroutine stops waiting for the response, but does not cancel the request, which has already been sent.</p><p class="paragraph">The upload and the download of a file are long-running, and report their state using a <span data-unresolved-link="kotlinx.coroutines.flow/Flow///PointingToDeclaration/">Flow</span>. See <a href="../../no.nordicsemi.android.mcumgr.ktx.transfer/-transfer-state/index.html">TransferState</a>.</p><p class="paragraph">Use the <a href="../../../mcumgr-core-ktx/no.nordicsemi.android.mcumgr.ktx.managers/-fs-manager-ktx/--root--.html">manager</a> to set a logger, the upload MTU, etc.</p></div></div>
+  </div>
+  <div class="tabbedcontent">
+    <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
+    <div class="tabs-section-body">
+      <div data-togglable="CONSTRUCTOR">
+        <h2 class="tableheader">Constructors</h2>
+        <div class="table"><a data-name="1896712502%2FConstructors%2F1429619253" anchor-label="FsManagerKtx" id="1896712502%2FConstructors%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-togglable="CONSTRUCTOR" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-fs-manager-ktx.html"><span>Fs</span><wbr><span>Manager</span><wbr><span><span>Ktx</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1896712502%2FConstructors%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">manager<span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.managers/-fs-manager/index.html">FsManager</a></span></span><span class="token punctuation">)</span></div><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">transport<span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr/-mcu-mgr-transport/index.html">McuMgrTransport</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Creates the manager using the given transport.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="PROPERTY">
+        <h2 class="tableheader">Properties</h2>
+        <div class="table"><a data-name="313718%2FProperties%2F1429619253" anchor-label="manager" id="313718%2FProperties%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="manager.html"><span><span>manager</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="313718%2FProperties%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="manager.html">manager</a><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.managers/-fs-manager/index.html">FsManager</a></div><div class="brief "><p class="paragraph">The manager of the Mcu Manager library, which sends the requests.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="FUNCTION">
+        <h2 class="tableheader">Functions</h2>
+        <div class="table"><a data-name="-641380530%2FFunctions%2F1429619253" anchor-label="closeAll" id="-641380530%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="close-all.html"><span>close</span><wbr><span><span>All</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-641380530%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="close-all.html"><span class="token function">closeAll</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response/-mcu-mgr-response/index.html">McuMgrResponse</a></div><div class="brief "><p class="paragraph">Closes all the files opened by the manager on the device.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1610476292%2FFunctions%2F1429619253" anchor-label="crc32" id="-1610476292%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="crc32.html"><span><span>crc32</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1610476292%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="crc32.html"><span class="token function">crc32</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-crc32-response/index.html">McuMgrFsCrc32Response</a></div><div class="brief "><p class="paragraph">Calculates the CRC32 of a file.</p></div><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="crc32.html"><span class="token function">crc32</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">offset<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">length<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-crc32-response/index.html">McuMgrFsCrc32Response</a></div><div class="brief "><p class="paragraph">Calculates the CRC32 of a part of a file.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-2133161260%2FFunctions%2F1429619253" anchor-label="download" id="-2133161260%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="download.html"><span><span>download</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-2133161260%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="download.html"><span class="token function">download</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><span data-unresolved-link="kotlinx.coroutines.flow/Flow///PointingToDeclaration/">Flow</span><span class="token operator">&lt;</span><a href="../../no.nordicsemi.android.mcumgr.ktx.transfer/-transfer-state/index.html">TransferState</a><span class="token operator">&lt;</span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html">ByteArray</a><span class="token operator">&gt;</span><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Downloads a file from the device.</p></div><div class="symbol monospace"><span class="token keyword">fun </span><a href="download.html"><span class="token function">download</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">output<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/io/OutputStream.html">OutputStream</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><span data-unresolved-link="kotlinx.coroutines.flow/Flow///PointingToDeclaration/">Flow</span><span class="token operator">&lt;</span><a href="../../no.nordicsemi.android.mcumgr.ktx.transfer/-transfer-state/index.html">TransferState</a><span class="token operator">&lt;</span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a><span class="token operator">&gt;</span><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Downloads a file from the device, writing it to the given stream.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1802707127%2FFunctions%2F1429619253" anchor-label="downloadChunk" id="1802707127%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="download-chunk.html"><span>download</span><wbr><span><span>Chunk</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1802707127%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="download-chunk.html"><span class="token function">downloadChunk</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">offset<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-download-response/index.html">McuMgrFsDownloadResponse</a></div><div class="brief "><p class="paragraph">Reads a single packet of a file, starting from the given offset.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1725767252%2FFunctions%2F1429619253" anchor-label="sha256" id="-1725767252%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="sha256.html"><span><span>sha256</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1725767252%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="sha256.html"><span class="token function">sha256</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-sha256-response/index.html">McuMgrFsSha256Response</a></div><div class="brief "><p class="paragraph">Calculates the SHA-256 of a file.</p></div><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="sha256.html"><span class="token function">sha256</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">offset<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">length<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-sha256-response/index.html">McuMgrFsSha256Response</a></div><div class="brief "><p class="paragraph">Calculates the SHA-256 of a part of a file.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1109172895%2FFunctions%2F1429619253" anchor-label="status" id="1109172895%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="status.html"><span><span>status</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1109172895%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="status.html"><span class="token function">status</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-status-response/index.html">McuMgrFsStatusResponse</a></div><div class="brief "><p class="paragraph">Reads the status of a file, such as its size.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1800713541%2FFunctions%2F1429619253" anchor-label="upload" id="-1800713541%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="upload.html"><span><span>upload</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1800713541%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="upload.html"><span class="token function">upload</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">data<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/io/InputStream.html">InputStream</a><span class="token punctuation">, </span></span><span class="parameter ">totalBytes<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><span data-unresolved-link="kotlinx.coroutines.flow/Flow///PointingToDeclaration/">Flow</span><span class="token operator">&lt;</span><a href="../../no.nordicsemi.android.mcumgr.ktx.transfer/-transfer-state/index.html">TransferState</a><span class="token operator">&lt;</span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a><span class="token operator">&gt;</span><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Uploads a file to the device, reading it from the given stream.</p></div><div class="symbol monospace"><span class="token keyword">fun </span><a href="upload.html"><span class="token function">upload</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">data<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html">ByteArray</a><span class="token punctuation">, </span></span><span class="parameter ">windowCapacity<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token operator"> = </span><span class="token constant">1</span><span class="token punctuation">, </span></span><span class="parameter ">memoryAlignment<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token operator"> = </span><span class="token constant">1</span></span></span><span class="token punctuation">)</span><span class="token operator">: </span><span data-unresolved-link="kotlinx.coroutines.flow/Flow///PointingToDeclaration/">Flow</span><span class="token operator">&lt;</span><a href="../../no.nordicsemi.android.mcumgr.ktx.transfer/-transfer-state/index.html">TransferState</a><span class="token operator">&lt;</span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a><span class="token operator">&gt;</span><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Uploads a file to the device.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1476524881%2FFunctions%2F1429619253" anchor-label="uploadChunk" id="-1476524881%2FFunctions%2F1429619253" data-filterable-set=":mcumgr-core-ktx/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":mcumgr-core-ktx/release" data-filterable-set=":mcumgr-core-ktx/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="upload-chunk.html"><span>upload</span><wbr><span><span>Chunk</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1476524881%2FFunctions%2F1429619253"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core-ktx/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="upload-chunk.html"><span class="token function">uploadChunk</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">name<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">data<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html">ByteArray</a><span class="token punctuation">, </span></span><span class="parameter ">offset<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../../mcumgr-core/no.nordicsemi.android.mcumgr.response.fs/-mcu-mgr-fs-upload-response/index.html">McuMgrFsUploadResponse</a></div><div class="brief "><p class="paragraph">Sends a single packet of a file, starting from the given offset.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    <div class="footer">
+        <div class="footer--container">
+            <a href="#content" id="go-to-top-link" class="footer--button footer--button_go-to-top"></a>
+            <div class="footer--content">
+                <div>
+                    <span>Generated by </span>
+                    <a class="footer--link footer--link_external" href="https://github.com/Kotlin/dokka">
+                        Dokka
+                    </a>
+                    <div>Copyright © 2022 - 2026 Nordic Semiconductor ASA. All Rights Reserved.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,1 +1,1 @@
-sourceset_dependencies = '{":mcumgr-core/release":[],":mcumgr-ble/release":[],":observability/release":[],":ota/release":[]}'
+sourceset_dependencies = '{":mcumgr-core/release":[],":mcumgr-core-ktx/release":[],":mcumgr-ble/release":[],":mcumgr-ble2/release":[],":observability/release":[],":ota/release":[]}'

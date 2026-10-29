@@ -5,6 +5,10 @@ module:mcumgr-ble
 no.nordicsemi.android.mcumgr.ble
 no.nordicsemi.android.mcumgr.ble.callback
 no.nordicsemi.android.mcumgr.ble.exception
+module:mcumgr-ble2
+no.nordicsemi.android.mcumgr.ble
+no.nordicsemi.android.mcumgr.ble.callback
+no.nordicsemi.android.mcumgr.ble.exception
 module:mcumgr-core
 no.nordicsemi.android.mcumgr
 no.nordicsemi.android.mcumgr.crash
@@ -18,6 +22,7 @@ no.nordicsemi.android.mcumgr.dfu.suit.task
 no.nordicsemi.android.mcumgr.exception
 no.nordicsemi.android.mcumgr.image
 no.nordicsemi.android.mcumgr.image.tlv
+no.nordicsemi.android.mcumgr.log
 no.nordicsemi.android.mcumgr.managers
 no.nordicsemi.android.mcumgr.managers.meta
 no.nordicsemi.android.mcumgr.response
@@ -33,6 +38,11 @@ no.nordicsemi.android.mcumgr.response.zephyr.basic
 no.nordicsemi.android.mcumgr.task
 no.nordicsemi.android.mcumgr.transfer
 no.nordicsemi.android.mcumgr.util
+module:mcumgr-core-ktx
+no.nordicsemi.android.mcumgr.ktx
+no.nordicsemi.android.mcumgr.ktx.dfu
+no.nordicsemi.android.mcumgr.ktx.managers
+no.nordicsemi.android.mcumgr.ktx.transfer
 module:observability
 no.nordicsemi.android.observability
 no.nordicsemi.android.observability.bluetooth

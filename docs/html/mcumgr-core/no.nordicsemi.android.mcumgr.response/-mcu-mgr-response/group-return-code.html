@@ -38,7 +38,7 @@
             </a>        <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle" type="button">Toggle table of contents
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
-        <div class="library-version" id="library-version">3.3.0
+        <div class="library-version" id="library-version">3.5.0-alpha01
         </div>
         <div class="navigation-controls">
         <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
@@ -94,7 +94,7 @@
   <div class="cover ">
     <h1 class="cover"><span>group</span><wbr><span>Return</span><wbr><span><span>Code</span></span></h1>
   </div>
-  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core/release"><div class="symbol monospace"><span class="token keyword">open </span><span class="token keyword">var </span><a href="group-return-code.html">groupReturnCode</a><span class="token operator">: </span><a href="../-has-return-code/-group-return-code/index.html">HasReturnCode.GroupReturnCode</a></div><p class="paragraph">Since version 2 of the SMP protocol, a more detailed return code is returned in the response. The "rc" field is still present, but is reserved for the manager and returns parsing errors, lack of requested group, etc, while the "err" field contains the return code from the group. </p><p class="paragraph"> Each group defines its own error codes, which may describe the issue in more detail than before. </p><p class="paragraph"> Note: In NCS 2.4 nd Zephyr 3.4 this field is encoded as "ret" instead or "err". The <a href="build-response.html">buildResponse</a> method replaces the "ret" with "err" before decoding the response to avoid compatibility issues.</p></div></div>
+  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core/release"><div class="symbol monospace"><span class="token keyword">open </span><span class="token keyword">var </span><a href="group-return-code.html">groupReturnCode</a><span class="token operator">: </span><a href="../-has-return-code/-group-return-code/index.html">HasReturnCode.GroupReturnCode</a></div><p class="paragraph">Since version 2 of the SMP protocol, a more detailed return code is returned in the response. The "rc" field is still present, but is reserved for the manager and returns parsing errors, lack of requested group, etc., while the "err" field contains the return code from the group. </p><p class="paragraph"> Each group defines its own error codes, which may describe the issue in more detail than before. </p><p class="paragraph"> Note: In NCS 2.4 nd Zephyr 3.4 this field is encoded as "ret" instead or "err". The <a href="build-response.html">buildResponse</a> method replaces the "ret" with "err" before decoding the response to avoid compatibility issues.</p></div></div>
 </div>
     <div class="footer">
         <div class="footer--container">

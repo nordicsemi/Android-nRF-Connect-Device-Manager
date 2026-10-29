@@ -38,7 +38,7 @@
             </a>        <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle" type="button">Toggle table of contents
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
-        <div class="library-version" id="library-version">3.3.0
+        <div class="library-version" id="library-version">3.5.0-alpha01
         </div>
         <div class="navigation-controls">
         <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
@@ -93,7 +93,7 @@
   <div class="breadcrumbs"><a href="../../../index.html">observability</a><span class="delimiter">/</span><a href="../../index.html">no.nordicsemi.android.observability.internet</a><span class="delimiter">/</span><a href="../index.html">ChunksUploader</a><span class="delimiter">/</span><span class="current">State</span></div>
   <div class="cover ">
     <h1 class="cover"><span><span>State</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":observability/release"><div class="symbol monospace"><span class="token keyword">sealed </span><span class="token keyword">interface </span><a href="index.html">State</a></div><p class="paragraph">Status of the manager.</p><p class="paragraph">The manager is in <a href="-idle/index.html">Idle</a> state when there are no chunks to upload. It switches to <a href="-in-progress/index.html">InProgress</a> when uploading chunks and to <a href="-suspended/index.html">Suspended</a> when an error occurs and the upload is suspended for a certain delay.</p><h4 class="tableheader">Inheritors</h4><div class="table"><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-idle/index.html">Idle</a></div></span></div><div></div></div></div><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-in-progress/index.html">InProgress</a></div></span></div><div></div></div></div><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-suspended/index.html">Suspended</a></div></span></div><div></div></div></div></div></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":observability/release"><div class="symbol monospace"><span class="token keyword">sealed </span><span class="token keyword">interface </span><a href="index.html">State</a></div><p class="paragraph">Status of the manager.</p><p class="paragraph">The manager is in <a href="-idle/index.html">Idle</a> state when there are no chunks to upload. It switches to <a href="-in-progress/index.html">InProgress</a> when uploading chunks and to <a href="-suspended/index.html">Suspended</a> when an error occurs and the upload is suspended for a certain delay.</p><h4 class="tableheader">Inheritors</h4><div class="table"><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-idle/index.html">Idle</a></div></span></div><div></div></div></div><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-in-progress/index.html">InProgress</a></div></span></div><div></div></div></div><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-unauthorized/index.html">Unauthorized</a></div></span></div><div></div></div></div><div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><a href="-suspended/index.html">Suspended</a></div></span></div><div></div></div></div></div></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
@@ -141,6 +141,21 @@
               <div>
                 <div class="title">
                   <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":observability/release"><div class="symbol monospace"><span class="token keyword">data </span><span class="token keyword">class </span><a href="-suspended/index.html">Suspended</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>delayInSeconds<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-long/index.html">Long</a></span></span><span class="token punctuation">)</span> : <a href="index.html">ChunksUploader.State</a></div><div class="brief "><p class="paragraph">Uploading chunks has been suspended.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-258561758%2FClasslikes%2F1206634121" anchor-label="Unauthorized" id="-258561758%2FClasslikes%2F1206634121" data-filterable-set=":observability/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":observability/release" data-filterable-set=":observability/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-unauthorized/index.html"><span><span>Unauthorized</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-258561758%2FClasslikes%2F1206634121"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":observability/release"><div class="symbol monospace"><span class="token keyword">data </span><span class="token keyword">object </span><a href="-unauthorized/index.html">Unauthorized</a> : <a href="index.html">ChunksUploader.State</a></div><div class="brief "><p class="paragraph">The Project Key is invalid.</p></div></div></div>
                 </div>
               </div>
             </div>
