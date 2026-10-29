@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -104,7 +105,10 @@ public class MainActivity extends AppCompatActivity
         setContentView(binding.getRoot());
 
         String deviceName = getString(R.string.unknown_device);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+        // BLUETOOTH_CONNECT permission was added in API 31 (S).
+        // Before, device.getName() did not require permission.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
             final String name = device.getName();
             if (name != null && !name.isEmpty()) {
                 deviceName = name;
