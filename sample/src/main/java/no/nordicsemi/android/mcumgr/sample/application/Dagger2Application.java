@@ -136,7 +136,8 @@ public class Dagger2Application extends Application implements HasAndroidInjecto
                     level = Log.WARN;
                 }
                 // Skip the tag, Proguard obfuscates it anyway.
-                super.log(level, null, message, t);
+                // Also, skip stack trace. It's printed in LogCat only.
+                super.log(level, null, message, (Throwable) null);
             }
 
         };
