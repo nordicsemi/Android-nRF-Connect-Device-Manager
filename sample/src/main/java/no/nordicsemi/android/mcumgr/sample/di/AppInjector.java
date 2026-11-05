@@ -78,6 +78,10 @@ public class AppInjector {
     }
 
     private static void handleActivity(@NonNull final Activity activity) {
+        // An Activity that finishes before it is created, see MainActivity, is not injected.
+        if (activity.isFinishing()) {
+            return;
+        }
         if (activity instanceof Injectable || activity instanceof HasAndroidInjector) {
             AndroidInjection.inject(activity);
         }
