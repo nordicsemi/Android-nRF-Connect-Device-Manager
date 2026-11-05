@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
@@ -458,14 +459,15 @@ class McuMgrBleTransportTest {
         transport.connect()
         device.failsEcho = true
 
-        // The write fails, and the SMP session still times out the request later.
+        // The write fails, and the SMP session takes the request out, so it does not time out.
         val request = transport.sendEcho("0", timeout = 300)
         val error = request.await().exceptionOrNull()
         assertIs<McuMgrException>(error)
         assertTrue(error.cause !is TransactionTimeoutException, "The write failure was not reported")
-        timedOut.await()
+        delay(600)
+        assertFalse(timedOut.isCompleted, "The request timed out after its write failed")
 
-        // The timeout is not reported again, and the transport goes on.
+        // The request is not reported again, and the transport goes on.
         device.failsEcho = false
         assertEquals("1", transport.sendEcho("1").await().getOrThrow())
         assertEquals(1, request.count)
