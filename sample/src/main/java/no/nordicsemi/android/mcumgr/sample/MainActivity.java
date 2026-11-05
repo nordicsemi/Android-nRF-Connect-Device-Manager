@@ -47,6 +47,7 @@ import no.nordicsemi.android.mcumgr.sample.fragment.FilesFragment;
 import no.nordicsemi.android.mcumgr.sample.fragment.ImageFragment;
 import no.nordicsemi.android.mcumgr.sample.fragment.LogsStatsFragment;
 import no.nordicsemi.android.mcumgr.sample.fragment.ShellFragment;
+import no.nordicsemi.android.mcumgr.sample.utils.Utils;
 import no.nordicsemi.android.mcumgr.sample.viewmodel.mcumgr.McuMgrViewModelFactory;
 import no.nordicsemi.android.observability.ObservabilityManager;
 import no.nordicsemi.kotlin.ble.client.android.CentralManager;
@@ -87,11 +88,25 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(@Nullable final Bundle savedInstanceState) {
         final BluetoothDevice device = getIntent().getParcelableExtra(EXTRA_DEVICE);
+        // The Kotlin BLE Library returns a peripheral only when Bluetooth is on, so the
+        // subcomponent of a device cannot be built while it is off. This is the case when the
+        // system restores this Activity after it has reclaimed the process, and Bluetooth has
+        // been turned off since. The scanner below this Activity asks to enable Bluetooth. An
+        // Activity of a device that is already set up in this process is created as usual: its
+        // peripheral exists, and the transport reports that Bluetooth is disabled.
+        final Dagger2Application application = (Dagger2Application) getApplication();
+        if (!application.hasTarget(device) && !Utils.isBleEnabled()) {
+            // Finishing before super.onCreate(Bundle) makes AppInjector skip the injection. The
+            // saved state is not passed on, as it would restore the fragments, which need it.
+            finish();
+            super.onCreate(null);
+            return;
+        }
         // The target must be set before calling super.onCreate(Bundle), as that is what triggers
         // the injection of this Activity: the injector factory for it is contributed by the
         // Dagger2 subcomponent, which setTarget(...) builds. The call is unconditional and
         // idempotent - the application keeps the subcomponent it already has for this device.
-        ((Dagger2Application) getApplication()).setTarget(device);
+        application.setTarget(device);
 
         EdgeToEdge.enable(this,
                 SystemBarStyle.dark(Color.TRANSPARENT),
@@ -195,7 +210,8 @@ public class MainActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
 
-        if (isFinishing()) {
+        // Nothing was injected, if the Activity finished right after it was started.
+        if (isFinishing() && mcuMgrTransport != null) {
             mcuMgrTransport.release();
             observabilityManager.disconnect();
             // The central manager registers broadcast receivers, which are removed only when it

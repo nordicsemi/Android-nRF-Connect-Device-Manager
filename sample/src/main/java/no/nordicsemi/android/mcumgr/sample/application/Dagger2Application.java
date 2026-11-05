@@ -82,6 +82,17 @@ public class Dagger2Application extends Application implements HasAndroidInjecto
     }
 
     /**
+     * Returns whether the Dagger2 subcomponent has been built for the given device in this
+     * process, see {@link #setTarget(BluetoothDevice)}.
+     *
+     * @param device the device.
+     * @return True if the subcomponent exists, false if it has to be built.
+     */
+    public boolean hasTarget(@NonNull final BluetoothDevice device) {
+        return device.equals(target);
+    }
+
+    /**
      * Binds the target {@link BluetoothDevice} with the Dagger2 subcomponent, building it if
      * it isn't already built for that device in this process.
      * <p>
