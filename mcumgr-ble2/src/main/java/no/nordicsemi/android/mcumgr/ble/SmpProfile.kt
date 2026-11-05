@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import no.nordicsemi.android.mcumgr.McuMgrHeader
 import no.nordicsemi.android.mcumgr.McuMgrScheme
 import no.nordicsemi.android.mcumgr.ble.callback.SmpProtocolSession
@@ -40,6 +41,7 @@ import no.nordicsemi.kotlin.ble.core.util.mergeIndexed
 import no.nordicsemi.kotlin.log.Log
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * An implementation of the Simple Management Protocol (SMP) service.
@@ -136,6 +138,11 @@ internal class SmpProfile @JvmOverloads constructor(
         0xA0.toByte(),  // Empty map(0) - an empty CBOR may be required for some implementations,
                         // otherwise the request is ignored and no notification is replied.
     )
+    /**
+     * How long to wait for the response to [readMcuMgrParams]. A device that does not support the
+     * command replies with an error right away, so waiting longer would not help.
+     */
+    private val mcuMgrParamsTimeout = 1.seconds
     /** The open SMP service, or null when it is not available. */
     private var openService: OpenService? = null
     /** The SMP characteristic, if the service has a usable one, see [prepare]. */
@@ -213,26 +220,41 @@ internal class SmpProfile @JvmOverloads constructor(
                 // can be split into long packets, so less time is used to send SMP headers. The longer
                 // packets, the better data-metadata ratio.
                 transportLog?.trace { "Obtaining Mcu Manager parameters..." }
-                val bufferSize = smpCharacteristic
-                    .waitForValueChange(
+                // Without the buffer size each SMP packet has to fit in a single write.
+                val maxWriteLength = peripheral.maximumWriteValueLength(WriteType.WITHOUT_RESPONSE)
+                val bufferSize = withTimeoutOrNull(mcuMgrParamsTimeout) {
+                    smpCharacteristic.waitForValueChange(
                         merge = sar,
                         trigger = {
                             smpCharacteristic.write(readMcuMgrParams, WriteType.WITHOUT_RESPONSE)
                         }
                     )
-                    .let { bytes ->
+                }
+                    ?.let { bytes ->
                         try {
                             val response = McuMgrResponse.buildResponse(
                                 McuMgrScheme.BLE,
                                 bytes,
                                 McuMgrParamsResponse::class.java
                             )
-                            transportLog?.info { "SMP reassembly supported with buffer size: ${response.bufSize} bytes, and count: ${response.bufCount}" }
-                            response.bufSize
+                            // A device that does not support the command, for example Zephyr with
+                            // CONFIG_MCUMGR_GRP_OS_MCUMGR_PARAMS disabled (the default), replies
+                            // with an error, like {"rc": 8}, and no buffer size, which is 0 here.
+                            if (response.isSuccess && response.bufSize >= maxWriteLength) {
+                                transportLog?.info { "SMP reassembly supported with buffer size: ${response.bufSize} bytes, and count: ${response.bufCount}" }
+                                response.bufSize
+                            } else {
+                                transportLog?.warn { "Mcu Manager parameters have no usable buffer size, SMP reassembly disabled" }
+                                maxWriteLength
+                            }
                         } catch (e: Exception) {
                             transportLog?.warn { "Failed to parse Mcu Manager parameters response: ${e.message}" }
-                            peripheral.maximumWriteValueLength(WriteType.WITHOUT_RESPONSE)
+                            maxWriteLength
                         }
+                    }
+                    ?: run {
+                        transportLog?.warn { "Mcu Manager parameters not received, SMP reassembly disabled" }
+                        maxWriteLength
                     }
 
                 transportLog?.trace { "Enabling SMP notifications..." }
