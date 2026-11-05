@@ -4,6 +4,7 @@ package no.nordicsemi.android.mcumgr.ble
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +14,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import no.nordicsemi.android.mcumgr.McuMgrHeader
 import no.nordicsemi.android.mcumgr.McuMgrScheme
@@ -39,8 +39,6 @@ import no.nordicsemi.kotlin.ble.core.util.chunked
 import no.nordicsemi.kotlin.ble.core.util.mergeIndexed
 import no.nordicsemi.kotlin.log.Log
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration
 
 /**
@@ -341,7 +339,12 @@ internal class SmpProfile @JvmOverloads constructor(
     }
 
     /**
-     * Sends an SMP request and awaits a response with a matching sequence number.
+     * Queues an SMP request and returns its response, which is matched to the request by its
+     * sequence number.
+     *
+     * The request is queued before this method returns, so requests queued one after another are
+     * sent in that order. The returned [Deferred] fails if writing the request fails, if no
+     * response arrives within the [timeout], or if the service closes before it arrives.
      *
      * @param payload The request packet, including the SMP header.
      * @param timeout The response timeout.
@@ -354,22 +357,19 @@ internal class SmpProfile @JvmOverloads constructor(
         InsufficientMtuException::class,
         IllegalStateException::class,
     )
-    suspend fun send(
+    fun send(
         payload: ByteArray,
         timeout: Duration,
-    ): ByteArray = suspendCancellableCoroutine { continuation ->
-        val service = openService ?: run {
-            continuation.resumeWithException(McuMgrDisconnectedException())
-            return@suspendCancellableCoroutine
-        }
+    ): Deferred<ByteArray> {
+        val service = openService ?: throw McuMgrDisconnectedException()
         // A packet longer than the reassembly buffer on the device side cannot be sent at all.
         if (payload.size > service.bufferSize) {
-            continuation.resumeWithException(
-                InsufficientMtuException(payload.size, service.bufferSize)
-            )
-            return@suspendCancellableCoroutine
+            throw InsufficientMtuException(payload.size, service.bufferSize)
         }
 
+        // The session may report a request more than once, for example a failed write and then
+        // its timeout. A deferred keeps the first outcome and ignores the others.
+        val response = CompletableDeferred<ByteArray>()
         service.session.send(payload, timeout, object : SmpTransaction {
             override suspend fun send(data: ByteArray) {
                 // Note: Here the 'data' has correct SEQ. The 'payload` does not, it's always 0.
@@ -392,18 +392,13 @@ internal class SmpProfile @JvmOverloads constructor(
                     }
                 } catch (e: Exception) {
                     // The request is still registered in the session, and would be failed again
-                    // by its timeout. Take it out first. If that is not possible, the request
-                    // has completed already, e.g. it timed out while the write was blocked, and
-                    // resuming the continuation again would throw.
-                    val pending = withContext(NonCancellable) { service.session.cancel(transaction) }
-                    if (pending) {
-                        if (e is CancellationException) {
-                            continuation.cancel(e)
-                        } else {
-                            continuation.resumeWithException(e)
-                        }
-                    }
-                    return
+                    // by its timeout. Take it out. If it is not there, it has completed already,
+                    // e.g. it timed out while the write was blocked, and the deferred keeps
+                    // the first outcome.
+                    withContext(NonCancellable) { service.session.cancel(transaction) }
+                    // This includes a CancellationException, when the session closes during
+                    // the write. The caller awaiting the response gets it as well.
+                    response.completeExceptionally(e)
                 }
             }
 
@@ -417,10 +412,13 @@ internal class SmpProfile @JvmOverloads constructor(
                     }
                 }
 
-                continuation.resume(data)
+                response.complete(data)
             }
 
-            override fun onFailure(e: Throwable) = continuation.resumeWithException(e)
+            override fun onFailure(e: Throwable) {
+                response.completeExceptionally(e)
+            }
         })
+        return response
     }
 }

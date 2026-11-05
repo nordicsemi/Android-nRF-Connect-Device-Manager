@@ -4,9 +4,12 @@ package no.nordicsemi.android.mcumgr.ble
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,11 +17,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
 import no.nordicsemi.android.mcumgr.McuMgrCallback
 import no.nordicsemi.android.mcumgr.McuMgrHeader
 import no.nordicsemi.android.mcumgr.McuMgrScheme
 import no.nordicsemi.android.mcumgr.McuMgrTransport
+import no.nordicsemi.android.mcumgr.ble.callback.TransactionTimeoutException
 import no.nordicsemi.android.mcumgr.ble.exception.McuMgrBluetoothDisabledException
 import no.nordicsemi.android.mcumgr.ble.exception.McuMgrDisconnectedException
 import no.nordicsemi.android.mcumgr.ble.exception.McuMgrInsufficientAuthenticationException
@@ -153,7 +160,22 @@ class McuMgrBleTransport @JvmOverloads constructor(
         val job: Job,
         /** Completes when the SMP service is ready, or fails when the connection does. */
         val ready: CompletableDeferred<Unit>,
-    )
+    ) {
+        /**
+         * Held by a request from its turn until it is queued in the SMP service, including while
+         * it waits for the connection to get ready.
+         *
+         * The requests have to reach the device in the order they were sent. An uploader that
+         * sends several chunks at once relies on it, and the File System group, for one, rejects
+         * a chunk at an unexpected offset. A coroutine launched for each request does not keep
+         * that order on its own, as the dispatcher may run the coroutines on different threads,
+         * or run the one launched last first. Instead, each request joins the queue for this
+         * mutex before [McuMgrBleTransport.send] returns, and the mutex is fair: it lets
+         * the requests through one by one, in the order they joined. A request releases it as
+         * soon as it is queued in the SMP service, so the next one does not wait for its response.
+         */
+        val handOff = Mutex()
+    }
 
     /**
      * The maximum length of an SMP packet the device can accept, or null when the transport
@@ -241,23 +263,46 @@ class McuMgrBleTransport @JvmOverloads constructor(
     ) {
         require(payload.size >= McuMgrHeader.HEADER_LENGTH) { "Packet must contain at least 8-byte SMP header, but has ${payload.size} bytes" }
         // If the device is not connected, connect. When it is already connected, this returns
-        // the established connection and awaiting it below completes immediately.
+        // the established connection.
         val connection = ensureConnected()
-        scope.launch {
+        // Started undispatched, so that the request joins the queue for the connection before
+        // send() returns, see Connection.handOff. It also makes the request report its failure
+        // when the scope is canceled before the dispatcher gets to it.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
-                // Bounded by the caller's timeout, so that a request cannot wait for
-                // a connection indefinitely. Note, that awaiting also throws when the device
-                // turns out to have no usable SMP service.
-                withTimeout(timeout.milliseconds) { connection.ready.await() }
-
-                val data = profile.send(payload, timeout.milliseconds)
-                val response = McuMgrResponse.buildResponse(McuMgrScheme.BLE, data, responseType)
-                if (response.isSuccess) {
-                    callback.onResponse(response)
+                var response: Deferred<ByteArray>? = null
+                // Bounded by the caller's timeout, so that a request cannot wait for its turn or
+                // for a connection indefinitely.
+                withTimeoutOrNull(timeout.milliseconds) {
+                    connection.handOff.withLock {
+                        // Pause here: send() returns to its caller, and the rest of the request
+                        // runs on the scope's thread. That way the callback is never called from
+                        // inside send(), not even when the request fails right away. The lock
+                        // stays taken, so no later request can overtake this one.
+                        yield()
+                        // Note, that awaiting also throws when the device turns out to have no
+                        // usable SMP service.
+                        connection.ready.await()
+                        // Not if the request has timed out or been canceled meanwhile, or the
+                        // connection has closed since it got ready, for example by release().
+                        ensureActive()
+                        if (!connection.job.isActive) {
+                            throw McuMgrDisconnectedException()
+                        }
+                        response = profile.send(payload, timeout.milliseconds)
+                    }
+                }
+                // Unless the timeout came first, the request has been handed over, and the SMP
+                // session times out the response.
+                val data = (response ?: throw McuMgrTimeoutException()).await()
+                val result = McuMgrResponse.buildResponse(McuMgrScheme.BLE, data, responseType)
+                if (result.isSuccess) {
+                    callback.onResponse(result)
                 } else {
-                    callback.onError(McuMgrErrorException(response))
+                    callback.onError(McuMgrErrorException(result))
                 }
             } catch (e: TimeoutCancellationException) {
+                // The scope has timed out, for example in withTimeout() it belongs to.
                 callback.onError(McuMgrTimeoutException())
                 throw e
             } catch (e: CancellationException) {
@@ -385,6 +430,9 @@ class McuMgrBleTransport @JvmOverloads constructor(
                 cancel("Connection closed")
             }
         }
+        // The block above does not run at all when the job is canceled before it starts,
+        // for example by release() right after a request. The requests still have to fail.
+        job.invokeOnCompletion { ready.completeExceptionally(McuMgrDisconnectedException()) }
         return Connection(job, ready).also { connection = it }
     }
 
@@ -453,6 +501,7 @@ class McuMgrBleTransport @JvmOverloads constructor(
      */
     private fun Throwable.toMcuMgrException(): McuMgrException = when (this) {
         is McuMgrException -> this
+        is TransactionTimeoutException -> McuMgrTimeoutException(this)
         is CancellationException -> McuMgrDisconnectedException()
         is BluetoothUnavailableException -> McuMgrBluetoothDisabledException()
         is ConnectionFailedException -> reason.toMcuMgrException()
