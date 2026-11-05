@@ -114,6 +114,29 @@ internal class SmpProtocolSession(
     }
 
     /**
+     * Cancels a request that has been taken from the queue, so that it is not failed by its timeout
+     * later, or by closing the session.
+     *
+     * A request is completed by whoever takes it out of the session first: a response, the timeout,
+     * closing the session, or this call. That is why it is completed only once.
+     *
+     * @param transaction The request to cancel.
+     * @return `true` if the request was still awaiting a response and was removed. In that case the
+     * caller has to report the result, as [SmpTransaction.onFailure] will not be called. `false` if
+     * the request has been completed already, or has not been sent yet, and so there is nothing to do.
+     */
+    suspend fun cancel(transaction: SmpTransaction): Boolean = transactionsMutex.withLock {
+        val id = transactions.indexOfFirst { it?.first === transaction }
+        if (id < 0) {
+            return@withLock false
+        }
+        transactions[id]?.second?.cancel()
+        transactions[id] = null
+        log.warn { "Request $id canceled" }
+        true
+    }
+
+    /**
      * Closes the session and fails every request that is still awaiting a response.
      *
      * This suspends only to take the transaction lock, so it should be called from a

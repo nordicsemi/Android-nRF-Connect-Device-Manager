@@ -382,6 +382,7 @@ internal class SmpProfile @JvmOverloads constructor(
                     }
                 }
 
+                val transaction = this
                 try {
                     // A single write cannot be longer than ATT MTU - 3 bytes, so longer packets
                     // are split here and reassembled by the device. Note, that write() trims
@@ -389,11 +390,19 @@ internal class SmpProfile @JvmOverloads constructor(
                     for (chunk in data.chunked(service.maxWriteLength)) {
                         service.characteristic.write(chunk, WriteType.WITHOUT_RESPONSE)
                     }
-                } catch (e: CancellationException) {
-                    continuation.cancel(e)
-                    return
                 } catch (e: Exception) {
-                    continuation.resumeWithException(e)
+                    // The request is still registered in the session, and would be failed again
+                    // by its timeout. Take it out first. If that is not possible, the request
+                    // has completed already, e.g. it timed out while the write was blocked, and
+                    // resuming the continuation again would throw.
+                    val pending = withContext(NonCancellable) { service.session.cancel(transaction) }
+                    if (pending) {
+                        if (e is CancellationException) {
+                            continuation.cancel(e)
+                        } else {
+                            continuation.resumeWithException(e)
+                        }
+                    }
                     return
                 }
             }
