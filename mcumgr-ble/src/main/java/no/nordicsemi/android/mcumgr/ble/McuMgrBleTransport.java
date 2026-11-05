@@ -901,10 +901,15 @@ public class McuMgrBleTransport extends BleManager implements McuMgrTransport {
                         try {
                             final McuMgrParamsResponse response = McuMgrResponse
                                     .buildResponse(McuMgrScheme.BLE, bytes, McuMgrParamsResponse.class);
-                            if (getMinLogPriority() <= Log.INFO) {
-                                log(Log.INFO, "SMP reassembly supported with buffer size: " + response.bufSize + " bytes and count: " + response.bufCount);
+                            // An error response, like {"err": {"group": 0, "rc": 8}} from a device
+                            // that does not support the command, parses without an exception and
+                            // has no buffer size, which would be taken for a buffer of 0 bytes.
+                            if (response.isSuccess() && response.bufSize > 0) {
+                                if (getMinLogPriority() <= Log.INFO) {
+                                    log(Log.INFO, "SMP reassembly supported with buffer size: " + response.bufSize + " bytes and count: " + response.bufCount);
+                                }
+                                mMaxPacketLength = response.bufSize;
                             }
-                            mMaxPacketLength = response.bufSize;
                         } catch (final Exception e) {
                             // Ignore
                         }
