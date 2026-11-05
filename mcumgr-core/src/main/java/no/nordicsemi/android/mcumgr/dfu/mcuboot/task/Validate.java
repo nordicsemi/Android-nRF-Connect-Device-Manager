@@ -328,6 +328,7 @@ class Validate extends FirmwareUpgradeTask {
 									resetRequired = true;
 								}
 								if (!permanent && !confirmed) {
+									performer.enqueue(new VerifyAfterReset(imageIndex, mcuMgrImage.getHash()));
 									performer.enqueue(new ConfirmAfterReset(imageIndex, mcuMgrImage.getHash()));
 								}
 								break;
