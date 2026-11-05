@@ -103,9 +103,19 @@ class McuMgrBleTransportTest {
     private class EchoDevice : PeripheralSpecEventHandler {
         val received: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-        /** When false, the device ignores the params command, so the SMP service never opens. */
+        /**
+         * When false, the device ignores the params command. The SMP service opens only when the
+         * request for the params times out, after a second.
+         */
         @Volatile
         var answersParams = true
+
+        /**
+         * When not null, the device answers the params command with this return code, like one
+         * that does not support it (8 is not supported), instead of the buffer size.
+         */
+        @Volatile
+        var paramsReturnCode: Int? = null
 
         /** When false, the device records the echo command, but does not answer it. */
         @Volatile
@@ -155,7 +165,8 @@ class McuMgrBleTransportTest {
             }
             when (header.commandId) {
                 ID_MCUMGR_PARAMS -> {
-                    val params = mapOf("buf_size" to BUFFER_SIZE, "buf_count" to 4)
+                    val params = paramsReturnCode?.let { mapOf("rc" to it) }
+                        ?: mapOf("buf_size" to BUFFER_SIZE, "buf_count" to 4)
                     when {
                         holdsParams -> synchronized(held) { held += { answer(params) } }
                         answersParams -> answer(params)
@@ -317,9 +328,9 @@ class McuMgrBleTransportTest {
     fun `a request waiting for the connection times out on time behind one that waits longer`() = transportTest {
         device.answersParams = false
 
-        // The SMP service never opens, as the device does not answer the params command.
+        // The SMP service opens only after a second, when the params request times out.
         val sentAt = TimeSource.Monotonic.markNow()
-        val slow = transport.sendEcho("slow", timeout = 2_000)
+        val slow = transport.sendEcho("slow", timeout = 800)
         val quick = transport.sendEcho("quick", timeout = 300)
 
         assertIs<McuMgrTimeoutException>(quick.await().exceptionOrNull())
@@ -328,6 +339,30 @@ class McuMgrBleTransportTest {
         assertEquals(0, slow.count, "The request waiting longer timed out first")
         assertIs<McuMgrTimeoutException>(slow.await().exceptionOrNull())
         assertTrue(device.received.isEmpty())
+    }
+
+    @Test
+    fun `a device without the params command is used with single writes`() = transportTest {
+        // As a Zephyr device with CONFIG_MCUMGR_GRP_OS_MCUMGR_PARAMS=n: {"rc": 8}, and no buffer.
+        device.paramsReturnCode = 8
+        transport.connect()
+
+        // The reply is not taken for a reassembly buffer of 0 bytes.
+        assertTrue(transport.maxPacketLength!! > 0, "Packet length: ${transport.maxPacketLength}")
+        assertEquals("1", transport.sendEcho("1").await().getOrThrow())
+    }
+
+    @Test
+    fun `a device not answering the params command is used with single writes`() = transportTest {
+        device.answersParams = false
+
+        // The request waits for the params to time out, which takes a second.
+        val sentAt = TimeSource.Monotonic.markNow()
+        assertEquals("1", transport.sendEcho("1").await().getOrThrow())
+        val elapsed = sentAt.elapsedNow()
+
+        assertTrue(elapsed >= 1.seconds, "The service opened after $elapsed")
+        assertTrue(transport.maxPacketLength!! > 0, "Packet length: ${transport.maxPacketLength}")
     }
 
     @Test
