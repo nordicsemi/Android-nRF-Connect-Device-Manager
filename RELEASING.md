@@ -7,7 +7,8 @@ creates the tag, publishes the libraries to Maven Central, deploys the sample ap
 
 ## How to release
 
-1. Merge everything that should be released to `main`.
+1. Merge everything that should be released to `main` and make sure the **Unit tests** workflow passed
+   on the last pull request.
 2. Open **Actions → Release → Run workflow**.
 3. Choose the branch in **Use workflow from**, e.g. `main`.
 4. Enter the **version**, e.g. `3.5.0-alpha01`. Untick **Deploy** to skip deploying the sample app to
@@ -19,7 +20,8 @@ run shows which stage failed:
 
 1. **Check.** Checks that it runs on a branch, that the version looks like `3.5.0` or
    `3.5.0-alpha01`, and that the tag does not exist yet.
-2. **Test.** Runs the unit tests (`./gradlew testDebugUnitTest`).
+2. **Test.** Runs the unit tests (`./gradlew testDebugUnitTest`). The merge commit of a pull request was
+   not tested by the **Unit tests** workflow, as that one runs on pull requests.
 3. **Docs.** Runs `./gradlew dokkaGenerate` for the given version and commits the result to the
    branch as `Docs for <version>`. The documentation is written to `docs/html`, which is published
    by GitHub Pages.
