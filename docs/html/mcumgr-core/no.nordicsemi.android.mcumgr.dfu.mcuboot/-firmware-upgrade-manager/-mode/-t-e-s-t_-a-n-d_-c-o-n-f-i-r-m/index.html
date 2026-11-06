@@ -38,7 +38,7 @@
             </a>        <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle" type="button">Toggle table of contents
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
-        <div class="library-version" id="library-version">3.5.0-alpha01
+        <div class="library-version" id="library-version">3.5.0-alpha02
         </div>
         <div class="navigation-controls">
         <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
@@ -93,7 +93,7 @@
   <div class="breadcrumbs"><a href="../../../../index.html">mcumgr-core</a><span class="delimiter">/</span><a href="../../../index.html">no.nordicsemi.android.mcumgr.dfu.mcuboot</a><span class="delimiter">/</span><a href="../../index.html">FirmwareUpgradeManager</a><span class="delimiter">/</span><a href="../index.html">Mode</a><span class="delimiter">/</span><span class="current">TEST_AND_CONFIRM</span></div>
   <div class="cover ">
     <h1 class="cover"><span>TEST_</span><wbr><span>AND_</span><wbr><span>CONFIRM</span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core/release"><div class="symbol monospace"><div class="block"><a href="index.html">TEST_AND_CONFIRM</a></div></div><p class="paragraph">When this flag is set, the manager will first send test followed by reset commands, then it will reconnect to the new application and will send confirm command. </p><p class="paragraph"> Use this mode when the new image supports SMP service and you want to test it before confirming.</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":mcumgr-core/release"><div class="symbol monospace"><div class="block"><a href="index.html">TEST_AND_CONFIRM</a></div></div><p class="paragraph">When this flag is set, the manager will first send test followed by reset commands, then it will reconnect to the new application and will send confirm command. Before confirming any image, it checks that each new image is running. If one isn't, for example because the device reverted to the previous one, the upgrade fails and no image is confirmed. </p><p class="paragraph"> Use this mode when the new image supports SMP service and you want to test it before confirming.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"></div>
