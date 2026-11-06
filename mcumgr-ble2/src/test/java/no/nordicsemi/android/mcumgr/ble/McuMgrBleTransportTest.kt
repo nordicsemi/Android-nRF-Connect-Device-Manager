@@ -125,6 +125,10 @@ class McuMgrBleTransportTest {
         @Volatile
         var echoReturnCode: Int? = null
 
+        /** When not null, the device sends its answers in notifications of at most this length. */
+        @Volatile
+        var notificationLength: Int? = null
+
         /** When true, writing the echo command fails on the client side. */
         @Volatile
         var failsEcho = false
@@ -155,13 +159,17 @@ class McuMgrBleTransportTest {
         ) {
             val header = McuMgrHeader.fromBytes(value)
             val answer = { response: Map<String, Any> ->
-                peripheral.simulateValueUpdate(
-                    handle = characteristic.instanceId,
-                    value = McuManager.buildPacket(
-                        McuMgrScheme.BLE, header.op + 1, header.flags, header.groupId,
-                        header.sequenceNum, header.commandId, response
-                    )
+                val packet = McuManager.buildPacket(
+                    McuMgrScheme.BLE, header.op + 1, header.flags, header.groupId,
+                    header.sequenceNum, header.commandId, response
                 )
+                // A long answer does not fit in a notification, so it is segmented.
+                packet.toList().chunked(notificationLength ?: packet.size).forEach { segment ->
+                    peripheral.simulateValueUpdate(
+                        handle = characteristic.instanceId,
+                        value = segment.toByteArray()
+                    )
+                }
             }
             when (header.commandId) {
                 ID_MCUMGR_PARAMS -> {
@@ -363,6 +371,18 @@ class McuMgrBleTransportTest {
 
         assertTrue(elapsed >= 1.seconds, "The service opened after $elapsed")
         assertTrue(transport.maxPacketLength!! > 0, "Packet length: ${transport.maxPacketLength}")
+    }
+
+    @Test
+    fun `a response sent in several notifications is reassembled`() = transportTest {
+        transport.connect()
+        device.notificationLength = 20
+
+        // The answer is much longer than a notification, and the header tells how much to wait for.
+        val message = "x".repeat(150)
+        assertEquals(message, transport.sendEcho(message).await().getOrThrow())
+        // The next answer is not mixed with it.
+        assertEquals("1", transport.sendEcho("1").await().getOrThrow())
     }
 
     @Test
