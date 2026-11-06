@@ -58,8 +58,6 @@ class McuMgrBleTransportTest {
         const val ID_ECHO = 0
         const val ID_MCUMGR_PARAMS = 6
         const val BUFFER_SIZE = 256
-        /** The time between segmented notifications of the mock device, in milliseconds. */
-        const val NOTIFICATION_INTERVAL_MS = 80L
         const val REQUESTS = 50
     }
 
@@ -166,11 +164,7 @@ class McuMgrBleTransportTest {
                     header.sequenceNum, header.commandId, response
                 )
                 // A long answer does not fit in a notification, so it is segmented.
-                packet.toList().chunked(notificationLength ?: packet.size).forEachIndexed { i, segment ->
-                    // The mock delivers each notification after a delay estimated from its size,
-                    // so a shorter one overtakes the longer one sent just before it. A real link
-                    // keeps the order, so the notifications are sent one connection event apart.
-                    if (i > 0) Thread.sleep(NOTIFICATION_INTERVAL_MS)
+                packet.toList().chunked(notificationLength ?: packet.size).forEach { segment ->
                     peripheral.simulateValueUpdate(
                         handle = characteristic.instanceId,
                         value = segment.toByteArray()
