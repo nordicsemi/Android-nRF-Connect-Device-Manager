@@ -1,8 +1,8 @@
 # Releasing nRF Connect Device Manager
 
 A release is made by the **Release** GitHub Action. It runs the unit tests, generates the documentation,
-creates the tag, publishes the libraries to Maven Central and deploys the sample app to Google Play
-(Internal track). The version of the release is the name of the tag, e.g.
+creates the tag, publishes the libraries to Maven Central, deploys the sample app to Google Play
+(Internal track) and creates the GitHub release. The version of the release is the name of the tag, e.g.
 `3.5.0-alpha01`.
 
 ## How to release
@@ -30,15 +30,18 @@ run shows which stage failed:
    * **Deploy** builds the signed app bundle from the tag and uploads it to the Internal track of
      Google Play using Fastlane (`bundle exec fastlane deployInternal`). It is skipped when
      **Deploy** is unticked.
+6. **GitHub release.** Runs when **Publish** succeeded and **Deploy** succeeded or was skipped. It creates
+   the GitHub release for the tag, with the notes generated from the pull requests merged since the
+   previous tag. Versions with a suffix, e.g. `3.5.0-alpha01`, are marked as pre-releases.
 
 Pushing a tag does not start the **Release** workflow, and the only way to release is to run it.
 
 After the workflow finished:
 
-* check that **Publish** and **Deploy** succeeded,
+* check that **Publish**, **Deploy** and **GitHub release** succeeded,
 * the artifacts appear on [Maven Central](https://central.sonatype.com/search?q=no.nordicsemi.android)
   within a few minutes to an hour,
-* create a release on GitHub from the existing tag, with the release notes.
+* edit the release notes of the GitHub release, if needed.
 
 ## Dry run
 
@@ -54,6 +57,8 @@ With **Dry run** ticked the workflow goes through all the stages, but nothing le
    upload anything.
    **Deploy** builds and signs the app bundle, and Google Play only validates it
    (`validate_only`), nothing is uploaded.
+6. **GitHub release** does not create the release. It prints the notes it would have, in the summary
+   of the run.
 
 Use it to check a change of the release workflow, or the secrets, before a real release. The default
 is not a dry run.
