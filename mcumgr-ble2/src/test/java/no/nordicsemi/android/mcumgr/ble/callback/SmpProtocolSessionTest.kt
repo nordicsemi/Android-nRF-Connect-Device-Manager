@@ -1,12 +1,19 @@
 package no.nordicsemi.android.mcumgr.ble.callback
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import no.nordicsemi.android.mcumgr.ble.exception.McuMgrDisconnectedException
 import org.junit.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -277,5 +284,43 @@ class SmpProtocolSessionTest {
         repeat(256) { session.receive(packetWith(it)) }
 
         assertFailsWith<IllegalStateException> { session.receive(packetWith(0)) }
+    }
+    @Test
+    fun `closing the session while the writer is busy does not fail the connection`() = testScope.runTest {
+        // The connection is the parent of the session, as in the transport. Whatever escapes
+        // from the reader or the writer ends up in the handler, where it would crash the app.
+        val uncaught = mutableListOf<Throwable>()
+        val connectionScope = CoroutineScope(
+            SupervisorJob() +
+                StandardTestDispatcher(testScheduler) +
+                CoroutineExceptionHandler { _, e -> uncaught += e }
+        )
+        lateinit var connectedSession: SmpProtocolSession
+        val connection = connectionScope.launch {
+            connectedSession = SmpProtocolSession(this, sink = null)
+            awaitCancellation()
+        }
+        runCurrent()
+
+        // A write that cannot be canceled, and takes its time. The writer is inside of it when
+        // the connection is canceled and the session closed.
+        val gate = CompletableDeferred<Unit>()
+        val busy = object : Request() {
+            override suspend fun send(data: ByteArray) {
+                withContext(NonCancellable) { gate.await() }
+            }
+        }
+        connectedSession.send(packet, 1.hours, busy)
+        runCurrent()
+
+        connection.cancel()
+        runCurrent()
+        withContext(NonCancellable) { connectedSession.close(McuMgrDisconnectedException()) }
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(emptyList(), uncaught)
+        assertEquals(1, busy.failures.size)
+        assertIs<McuMgrDisconnectedException>(busy.failures.single())
     }
 }
