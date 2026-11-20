@@ -88,7 +88,6 @@ internal class SmpProtocolSession(
      */
     init {
         scope.launch(
-            // The channels are closed with an exception by [close], which propagates here.
             // The pending requests are failed by [close] itself, so that they are reported even
             // when these coroutines have already been canceled along with the profile scope.
             CoroutineExceptionHandler { _, throwable ->
@@ -108,7 +107,13 @@ internal class SmpProtocolSession(
     }
 
     fun receive(data: ByteArray) {
-        check(rxChannel.trySend(data).isSuccess) {
+        val result = rxChannel.trySend(data)
+        // A notification may still arrive while the session is closing. There is no request
+        // left to match it to, as closing the session has failed them all.
+        if (result.isClosed) {
+            return
+        }
+        check(result.isSuccess) {
             "Cannot receive response, receive channel buffer is full."
         }
     }
@@ -143,8 +148,14 @@ internal class SmpProtocolSession(
      * [kotlinx.coroutines.NonCancellable] context while the connection is being torn down.
      */
     suspend fun close(e: Throwable) {
-        txChannel.close(e)
-        rxChannel.close(e)
+        // The channels are closed without a cause on purpose. A channel closed with a cause
+        // rethrows it to the reader and the writer, whenever they take the next element, even
+        // when they have been canceled along with the connection in the meantime. The exception
+        // is not a cancellation, so it would fail the coroutines of the connection, and as
+        // nobody handles it there, crash the application. The requests that are still awaiting
+        // a response are failed below with the given cause, which is where it belongs.
+        txChannel.close()
+        rxChannel.close()
         transactionsMutex.withLock {
             transactions.indices.forEach { id ->
                 transactions[id]?.let { (transaction, job) ->
