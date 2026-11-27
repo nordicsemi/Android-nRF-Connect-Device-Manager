@@ -146,7 +146,15 @@ public class ScannerViewModel extends AndroidViewModel {
                 .build();
 
         final BluetoothLeScannerCompat scanner = BluetoothLeScannerCompat.getScanner();
-        scanner.startScan(null, settings, scanCallback);
+        try {
+            scanner.startScan(null, settings, scanCallback);
+        } catch (final IllegalStateException e) {
+            // The scanner is not available when Bluetooth has just been turned off, or is being
+            // restarted, while the scanner state still reports it as enabled. The state is
+            // updated by a broadcast, which will start the scan again when Bluetooth is back on.
+            Timber.w(e, "Failed to start scanning");
+            return;
+        }
         scannerStateLiveData.scanningStarted();
     }
 
